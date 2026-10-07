@@ -1,0 +1,716 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export type Database = {
+  public: {
+    Tables: {
+      audit_logs: {
+        Row: {
+          action: string;
+          actor_id: string | null;
+          business_id: string | null;
+          created_at: string;
+          id: string;
+          metadata: NonNullable<Json>;
+          resource_id: string | null;
+          resource_type: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          action: string;
+          actor_id?: string | null;
+          business_id?: string | null;
+          created_at?: string;
+          id?: string;
+          metadata?: NonNullable<Json>;
+          resource_id?: string | null;
+          resource_type: string;
+        };
+        Update: {
+          action?: string;
+          actor_id?: string | null;
+          business_id?: string | null;
+          created_at?: string;
+          id?: string;
+          metadata?: NonNullable<Json>;
+          resource_id?: string | null;
+          resource_type?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      business_members: {
+        Row: {
+          business_id: string;
+          created_at: string;
+          id: string;
+          invited_by: string | null;
+          joined_at: string | null;
+          role_id: string;
+          status: Database["public"]["Enums"]["member_status"];
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          created_at?: string;
+          id?: string;
+          invited_by?: string | null;
+          joined_at?: string | null;
+          role_id: string;
+          status?: Database["public"]["Enums"]["member_status"];
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          business_id?: string;
+          created_at?: string;
+          id?: string;
+          invited_by?: string | null;
+          joined_at?: string | null;
+          role_id?: string;
+          status?: Database["public"]["Enums"]["member_status"];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "business_members_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "business_members_role_id_fkey";
+            columns: ["role_id"];
+            isOneToOne: false;
+            referencedRelation: "roles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      businesses: {
+        Row: {
+          address: string | null;
+          allow_negative_stock: boolean;
+          city: string | null;
+          country_code: string;
+          created_at: string;
+          created_by: string | null;
+          currency_code: string;
+          email: string | null;
+          id: string;
+          legal_name: string | null;
+          logo_path: string | null;
+          name: string;
+          ninea: string | null;
+          phone: string | null;
+          rccm: string | null;
+          status: Database["public"]["Enums"]["business_status"];
+          timezone: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          address?: string | null;
+          allow_negative_stock?: boolean;
+          city?: string | null;
+          country_code?: string;
+          created_at?: string;
+          created_by?: string | null;
+          currency_code?: string;
+          email?: string | null;
+          id?: string;
+          legal_name?: string | null;
+          logo_path?: string | null;
+          name: string;
+          ninea?: string | null;
+          phone?: string | null;
+          rccm?: string | null;
+          status?: Database["public"]["Enums"]["business_status"];
+          timezone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          address?: string | null;
+          allow_negative_stock?: boolean;
+          city?: string | null;
+          country_code?: string;
+          created_at?: string;
+          created_by?: string | null;
+          currency_code?: string;
+          email?: string | null;
+          id?: string;
+          legal_name?: string | null;
+          logo_path?: string | null;
+          name?: string;
+          ninea?: string | null;
+          phone?: string | null;
+          rccm?: string | null;
+          status?: Database["public"]["Enums"]["business_status"];
+          timezone?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      categories: {
+        Row: {
+          business_id: string;
+          created_at: string;
+          id: string;
+          name: string;
+          parent_id: string | null;
+          status: Database["public"]["Enums"]["record_status"];
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          created_at?: string;
+          id?: string;
+          name: string;
+          parent_id?: string | null;
+          status?: Database["public"]["Enums"]["record_status"];
+          updated_at?: string;
+        };
+        Update: {
+          business_id?: string;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          parent_id?: string | null;
+          status?: Database["public"]["Enums"]["record_status"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "categories_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "categories_parent_fkey";
+            columns: ["business_id", "parent_id"];
+            isOneToOne: false;
+            referencedRelation: "categories";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
+      locations: {
+        Row: {
+          address: string | null;
+          business_id: string;
+          created_at: string;
+          id: string;
+          is_default: boolean;
+          name: string;
+          status: Database["public"]["Enums"]["record_status"];
+          type: Database["public"]["Enums"]["location_type"];
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          address?: string | null;
+          business_id: string;
+          created_at?: string;
+          id?: string;
+          is_default?: boolean;
+          name: string;
+          status?: Database["public"]["Enums"]["record_status"];
+          type?: Database["public"]["Enums"]["location_type"];
+          updated_at?: string;
+        };
+        Update: {
+          address?: string | null;
+          business_id?: string;
+          created_at?: string;
+          id?: string;
+          is_default?: boolean;
+          name?: string;
+          status?: Database["public"]["Enums"]["record_status"];
+          type?: Database["public"]["Enums"]["location_type"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "locations_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      permissions: {
+        Row: {
+          code: string;
+          created_at: string;
+          description: string;
+          module: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          code: string;
+          created_at?: string;
+          description: string;
+          module: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          description?: string;
+          module?: string;
+        };
+        Relationships: [];
+      };
+      product_costs: {
+        Row: {
+          business_id: string;
+          cost_price: number;
+          created_at: string;
+          product_id: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          cost_price?: number;
+          created_at?: string;
+          product_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          business_id?: string;
+          cost_price?: number;
+          created_at?: string;
+          product_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_costs_product_fkey";
+            columns: ["business_id", "product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
+      products: {
+        Row: {
+          allows_fractional_quantity: boolean;
+          barcode: string | null;
+          business_id: string;
+          category_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          id: string;
+          image_path: string | null;
+          min_stock_level: number;
+          name: string;
+          sale_price: number;
+          sku: string | null;
+          status: Database["public"]["Enums"]["record_status"];
+          track_stock: boolean;
+          unit: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          allows_fractional_quantity?: boolean;
+          barcode?: string | null;
+          business_id: string;
+          category_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          image_path?: string | null;
+          min_stock_level?: number;
+          name: string;
+          sale_price?: number;
+          sku?: string | null;
+          status?: Database["public"]["Enums"]["record_status"];
+          track_stock?: boolean;
+          unit?: string;
+          updated_at?: string;
+        };
+        Update: {
+          allows_fractional_quantity?: boolean;
+          barcode?: string | null;
+          business_id?: string;
+          category_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          image_path?: string | null;
+          min_stock_level?: number;
+          name?: string;
+          sale_price?: number;
+          sku?: string | null;
+          status?: Database["public"]["Enums"]["record_status"];
+          track_stock?: boolean;
+          unit?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "products_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "products_category_fkey";
+            columns: ["business_id", "category_id"];
+            isOneToOne: false;
+            referencedRelation: "categories";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
+      profiles: {
+        Row: {
+          avatar_path: string | null;
+          created_at: string;
+          full_name: string | null;
+          id: string;
+          locale: string;
+          phone: string | null;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          avatar_path?: string | null;
+          created_at?: string;
+          full_name?: string | null;
+          id: string;
+          locale?: string;
+          phone?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          avatar_path?: string | null;
+          created_at?: string;
+          full_name?: string | null;
+          id?: string;
+          locale?: string;
+          phone?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      role_permissions: {
+        Row: {
+          created_at: string;
+          permission_code: string;
+          role_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          permission_code: string;
+          role_id: string;
+        };
+        Update: {
+          created_at?: string;
+          permission_code?: string;
+          role_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_code_fkey";
+            columns: ["permission_code"];
+            isOneToOne: false;
+            referencedRelation: "permissions";
+            referencedColumns: ["code"];
+          },
+          {
+            foreignKeyName: "role_permissions_role_id_fkey";
+            columns: ["role_id"];
+            isOneToOne: false;
+            referencedRelation: "roles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      roles: {
+        Row: {
+          business_id: string | null;
+          code: string;
+          created_at: string;
+          description: string | null;
+          id: string;
+          is_system: boolean;
+          name: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id?: string | null;
+          code: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_system?: boolean;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          business_id?: string | null;
+          code?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          is_system?: boolean;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "roles_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      accept_invitation: {
+        Args: { p_business_id: string };
+        Returns: undefined;
+      };
+      change_member_role: {
+        Args: { p_business_id: string; p_role_code: string; p_user_id: string };
+        Returns: undefined;
+      };
+      create_business: {
+        Args: {
+          p_address?: string;
+          p_city?: string;
+          p_name: string;
+          p_phone?: string;
+        };
+        Returns: string;
+      };
+      decline_invitation: {
+        Args: { p_business_id: string };
+        Returns: undefined;
+      };
+      get_my_permissions: {
+        Args: { p_business_id: string };
+        Returns: string[];
+      };
+      invite_member: {
+        Args: { p_business_id: string; p_email: string; p_role_code: string };
+        Returns: string;
+      };
+      leave_business: { Args: { p_business_id: string }; Returns: undefined };
+      list_business_members: {
+        Args: { p_business_id: string };
+        Returns: {
+          avatar_path: string;
+          email: string;
+          full_name: string;
+          joined_at: string;
+          phone: string;
+          role_code: string;
+          role_name: string;
+          status: Database["public"]["Enums"]["member_status"];
+          user_id: string;
+        }[];
+      };
+      list_my_invitations: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          business_id: string;
+          business_name: string;
+          invited_at: string;
+          role_code: string;
+          role_name: string;
+        }[];
+      };
+      remove_member: {
+        Args: { p_business_id: string; p_user_id: string };
+        Returns: undefined;
+      };
+      set_member_status: {
+        Args: {
+          p_business_id: string;
+          p_status: Database["public"]["Enums"]["member_status"];
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
+      set_product_status: {
+        Args: {
+          p_product_id: string;
+          p_status: Database["public"]["Enums"]["record_status"];
+        };
+        Returns: undefined;
+      };
+    };
+    Enums: {
+      business_status: "ACTIVE" | "SUSPENDED";
+      location_type: "STORE" | "WAREHOUSE";
+      member_status: "INVITED" | "ACTIVE" | "SUSPENDED";
+      record_status: "ACTIVE" | "ARCHIVED";
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
+};
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<
+  keyof Database,
+  "public"
+>];
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never;
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never;
+
+export const Constants = {
+  public: {
+    Enums: {
+      business_status: ["ACTIVE", "SUSPENDED"],
+      location_type: ["STORE", "WAREHOUSE"],
+      member_status: ["INVITED", "ACTIVE", "SUSPENDED"],
+      record_status: ["ACTIVE", "ARCHIVED"],
+    },
+  },
+} as const;

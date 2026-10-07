@@ -17,6 +17,8 @@ Realtime, Edge Functions).
 | [docs/roles-and-permissions.md](docs/roles-and-permissions.md) | RBAC : rôles, permissions, matrice |
 | [docs/business-rules.md](docs/business-rules.md) | Règles métier, stratégie financière XOF, stock, ventes, crédit |
 | [docs/migration-to-laravel.md](docs/migration-to-laravel.md) | Évolution vers Laravel (V2) |
+| [docs/frontend-integration.md](docs/frontend-integration.md) | **Guide Flutter / React** : connexion, onboarding, permissions, catalogue, images, erreurs |
+| [types/database.types.ts](types/database.types.ts) | Types TypeScript générés (schéma `public`) |
 
 ## Prérequis
 
@@ -76,7 +78,7 @@ npx supabase db diff --linked --schema public,private   # doit afficher "No sche
 npx supabase db lint --linked --schema public,private
 ```
 
-**État de la production** (2026-10-07) : migrations des Phases 2 à 4 appliquées. Contrôles
+**État de la production** (2026-10-07) : migrations des Phases 2 à 5 appliquées. Contrôles
 passés : schéma identique aux migrations, linter propre, `anon` refusé sur tables et RPC,
 schéma `private` non exposé. Le seed de démo n'est **jamais** envoyé en production.
 

@@ -1,0 +1,169 @@
+# Guide d'intégration frontend (Flutter / React) — JËND PRO
+
+> Pour : développeurs Flutter et React qui consomment le backend Supabase.
+> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 5 en production**.
+
+## 1. Ce qui est prêt / ce qui arrive
+
+| Domaine | État | Comment l'utiliser |
+|---|---|---|
+| Inscription, connexion, session, profil | ✅ Prêt | Supabase Auth + table `profiles` |
+| Entreprises, emplacements, choix de l'entreprise active | ✅ Prêt | `businesses`, `locations`, RPC `create_business` |
+| Membres, invitations, rôles, permissions | ✅ Prêt | RPC `invite_member`, `get_my_permissions`… |
+| Catégories, produits, coûts, images produits, logo | ✅ Prêt | Tables `categories`, `products`, `product_costs` + Storage |
+| Stock / inventaire | ⏳ Phase 6 | Écrans possibles avec données fictives ; **ne pas** gérer le stock côté client |
+| Clients et crédits | ⏳ Phase 7 | idem |
+| Fournisseurs, achats | ⏳ Phase 8 | idem |
+| **Ventes, paiements (caisse)** | ⏳ Phase 9 | Une RPC `create_sale` atomique sera fournie : ne rien calculer « en vrai » côté client |
+| Dépenses, employés, abonnements, notifications | ⏳ Phases 10-12 | — |
+
+Règle d'or : **le frontend n'est jamais une couche de sécurité ni la source de vérité des
+calculs**. Il affiche, saisit et appelle l'API ; la base décide (RLS, RPC).
+
+## 2. Connexion au backend
+
+| Environnement | URL | Clé |
+|---|---|---|
+| Production `jend_pro` | `https://lmyhrksehcodyylzphyn.supabase.co` | Clé **publishable** (Dashboard → Project Settings → API Keys) |
+| Local (`npx supabase start` dans le dépôt backend) | `http://127.0.0.1:54421` (émulateur Android : `http://10.0.2.2:54421`) | Clé publishable affichée par `npx supabase status` |
+
+- **Jamais** la clé `service_role` / secret dans Flutter ou React.
+- Comptes de démo **en local uniquement** (mot de passe `jendpro-demo`) :
+  `owner@demo.jendpro.local` (OWNER), `cashier@demo.jendpro.local` (CASHIER),
+  entreprise « Boutique Démo Dakar ».
+
+```dart
+// Flutter (supabase_flutter)
+await Supabase.initialize(url: supabaseUrl, anonKey: publishableKey);
+final supabase = Supabase.instance.client;
+```
+
+```ts
+// React (@supabase/supabase-js) — types générés : types/database.types.ts du dépôt backend
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from './database.types';
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+```
+
+Régénérer les types après chaque phase : `npx supabase gen types typescript --linked --schema public`.
+
+## 3. Authentification
+
+```ts
+// Inscription : full_name est copié dans profiles par le backend
+await supabase.auth.signUp({ email, password, options: { data: { full_name: 'Awa Ndiaye' } } });
+await supabase.auth.signInWithPassword({ email, password });
+await supabase.auth.signOut();
+await supabase.auth.resetPasswordForEmail(email, { redirectTo: 'https://<app>/reset' });
+```
+
+- Mot de passe : 8 caractères minimum.
+- Le SDK gère le refresh token ; écouter `onAuthStateChange`.
+- Profil : `select * from profiles` renvoie **uniquement** celui de l'utilisateur ;
+  modifiable : `full_name`, `phone` (`+221771234567`), `avatar_path`, `locale` (`fr`|`en`|`wo`).
+
+## 4. Parcours d'entrée (onboarding)
+
+```text
+connexion
+  ├─ list_my_invitations()  → invitations en attente → accept_invitation / decline_invitation
+  ├─ select businesses       → entreprises où l'utilisateur est membre ACTIF
+  │     ├─ 0 → écran « Créer mon entreprise » → rpc('create_business', {p_name, p_phone, p_city, p_address})
+  │     ├─ 1 → entrer directement
+  │     └─ n → sélecteur d'entreprise
+  └─ entreprise active choisie (stockée localement)
+        └─ rpc('get_my_permissions', {p_business_id}) → adapter l'UI
+```
+
+- Un utilisateur peut appartenir à **plusieurs entreprises** avec des rôles différents.
+- **Toutes** les requêtes métier doivent filtrer par l'entreprise active :
+  `.eq('business_id', activeBusinessId)` (la RLS empêche de toute façon de voir les autres).
+- Rafraîchir les permissions au retour au premier plan : un rôle peut changer ou un
+  membre être suspendu à tout moment (accès coupé immédiatement côté serveur).
+
+## 5. Permissions et UI
+
+`get_my_permissions` renvoie une liste de codes (`products.create`, `sales.cancel`…).
+Utilisez-la pour masquer/désactiver boutons et écrans. Catalogue complet et matrice :
+[roles-and-permissions.md](roles-and-permissions.md).
+
+Exemples : le caissier n'a pas `products.read_cost` → ne pas afficher les colonnes coût/marge
+(la table `product_costs` lui renvoie de toute façon 0 ligne).
+
+## 6. Catalogue
+
+```ts
+// Liste paginée
+const { data } = await supabase.from('products')
+  .select('id, name, sku, barcode, unit, sale_price, status, image_path, category:categories(id, name)')
+  .eq('business_id', bid).eq('status', 'ACTIVE')
+  .order('name').range(0, 49);
+
+// Recherche par code-barres (scanner)
+await supabase.from('products').select('*').eq('business_id', bid).eq('barcode', code).maybeSingle();
+
+// Création (business_id obligatoire ; created_by, status sont gérés par le serveur)
+const { data: p } = await supabase.from('products')
+  .insert({ business_id: bid, name: 'Bissap 1L', sale_price: 1500, unit: 'bouteille', sku: 'BIS-1L' })
+  .select().single();
+
+// Coût (seulement si products.read_cost + products.update) — la ligne existe déjà
+await supabase.from('product_costs').update({ cost_price: 900 }).eq('product_id', p.id);
+
+// Archiver / réactiver (products.delete) — pas de DELETE sur products
+await supabase.rpc('set_product_status', { p_product_id: p.id, p_status: 'ARCHIVED' });
+```
+
+Champs **non modifiables** après création : `business_id`, `track_stock`, `created_by`
+(`status` via la RPC uniquement). Catégories : 2 niveaux maximum.
+
+## 7. Images (Storage)
+
+| Bucket | Chemin obligatoire | Formats / taille | Qui écrit |
+|---|---|---|---|
+| `product-images` | `{business_id}/{product_id}/{uuid}.webp` | JPEG, PNG, WebP — 2 Mo | `products.update` |
+| `business-assets` | `{business_id}/logo-{uuid}.webp` | JPEG, PNG, WebP — 1 Mo | `settings.manage` |
+
+```ts
+const path = `${bid}/${productId}/${crypto.randomUUID()}.webp`;
+await supabase.storage.from('product-images').upload(path, file, { contentType: 'image/webp' });
+await supabase.from('products').update({ image_path: path }).eq('id', productId);
+const url = supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+```
+
+- Compresser/redimensionner côté client (WebP ~800 px) : réseau mobile.
+- `image_path` / `logo_path` hors du dossier de l'entreprise sont refusés par la base.
+- SVG refusé.
+
+## 8. Argent et quantités
+
+- Montants = **entiers en francs CFA** (`1500` = 1 500 FCFA). Pas de décimales, pas de float.
+  Affichage : `NumberFormat('#,##0', 'fr')` + ` FCFA`.
+- Quantités : décimales possibles (`numeric`, 3 décimales) seulement si
+  `products.allows_fractional_quantity = true` ; sinon entiers.
+- Les totaux de vente/achat seront **calculés par le serveur** (Phase 9) : le client peut
+  afficher une estimation, mais la valeur de référence est celle renvoyée par la RPC.
+
+## 9. Erreurs
+
+Les erreurs métier renvoient `message` = code stable à traduire, `code` = SQLSTATE.
+Table complète : [business-rules.md §13](business-rules.md#13-contrat-derreurs-des-rpc).
+
+| Cas fréquent | `code` | `message` |
+|---|---|---|
+| Action non autorisée (RPC) | `42501` | `PERMISSION_DENIED` |
+| Écriture refusée par RLS / colonne non modifiable | `42501` | `new row violates row-level security policy…` / `permission denied…` |
+| SKU / code-barres déjà utilisé | `23505` | (unicité) |
+| Valeur invalide (prix négatif, nom vide…) | `23514` | (CHECK) |
+| Dernier propriétaire | `P0001` | `LAST_OWNER` |
+
+Note : un `UPDATE` sur une ligne non autorisée ne lève pas d'erreur : il modifie 0 ligne.
+Utiliser `.select()` après l'update pour vérifier le résultat.
+
+## 10. Bonnes pratiques
+
+- Pagination systématique (`range`) ; ne jamais charger un catalogue entier.
+- Sélectionner les colonnes utiles plutôt que `*` sur les listes.
+- Pas de clé `service_role`, pas de logique de stock/caisse côté client.
+- Ventes hors ligne (Phase 9) : chaque vente portera un `client_reference` (UUID généré
+  par l'app) pour être rejouée sans doublon — prévoir ce champ dans le modèle local.
