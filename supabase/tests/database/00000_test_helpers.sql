@@ -95,6 +95,86 @@ begin
 end;
 $$;
 
+-- -----------------------------------------------------------------------------
+-- Tenancy fixtures
+-- -----------------------------------------------------------------------------
+-- Creates a business through the real RPC, as the given user (who becomes OWNER).
+-- Leaves the session unauthenticated (postgres) afterwards.
+create or replace function tests.create_business_as(p_email text, p_name text)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid;
+begin
+  perform tests.authenticate_as(tests.get_user_id(p_email));
+  v_id := public.create_business(p_name);
+  perform tests.clear_authentication();
+  return v_id;
+end;
+$$;
+
+-- Adds an ACTIVE member directly (fixture shortcut, bypasses the invitation flow).
+create or replace function tests.add_member(p_business_id uuid, p_email text, p_role_code text)
+returns uuid
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.business_members (business_id, user_id, role_id, status, joined_at)
+  select p_business_id, tests.get_user_id(p_email), r.id, 'ACTIVE', now()
+    from public.roles r
+   where r.business_id is null and r.code = p_role_code
+  returning id;
+$$;
+
+-- Standard two-tenant fixture used by security tests:
+--   Business A: owner_a, admin_a, manager_a, cashier_a, stock_a, multi (MANAGER)
+--   Business B: owner_b, multi (CASHIER)
+--   outsider: no business
+create or replace function tests.setup_two_tenants()
+returns void
+language plpgsql
+as $$
+declare
+  v_a uuid;
+  v_b uuid;
+begin
+  perform tests.create_user(e) from unnest(array[
+    'owner_a@test.local', 'admin_a@test.local', 'manager_a@test.local',
+    'cashier_a@test.local', 'stock_a@test.local',
+    'owner_b@test.local', 'multi@test.local', 'outsider@test.local']) e;
+
+  v_a := tests.create_business_as('owner_a@test.local', 'Business A');
+  v_b := tests.create_business_as('owner_b@test.local', 'Business B');
+
+  perform tests.add_member(v_a, 'admin_a@test.local',   'ADMIN');
+  perform tests.add_member(v_a, 'manager_a@test.local', 'MANAGER');
+  perform tests.add_member(v_a, 'cashier_a@test.local', 'CASHIER');
+  perform tests.add_member(v_a, 'stock_a@test.local',   'STOCK_MANAGER');
+  perform tests.add_member(v_a, 'multi@test.local',     'MANAGER');
+  perform tests.add_member(v_b, 'multi@test.local',     'CASHIER');
+end;
+$$;
+
+create or replace function tests.business_id(p_name text)
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select id from public.businesses where name = p_name;
+$$;
+
+-- Shorthand: authenticate by e-mail.
+create or replace function tests.login(p_email text)
+returns void
+language sql
+as $$
+  select tests.authenticate_as(tests.get_user_id(p_email));
+$$;
+
 grant execute on all functions in schema tests to anon, authenticated, service_role;
 
 begin;

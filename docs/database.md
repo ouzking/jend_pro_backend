@@ -1,7 +1,7 @@
 # Modèle de données — JËND PRO
 
-> Statut : **modèle cible (Phase 1)**. Chaque table est implémentée dans la phase
-> indiquée ; ce document est mis à jour à chaque phase pour refléter le schéma réel.
+> Statut : **modèle cible**, mis à jour à chaque phase pour refléter le schéma réel.
+> ✅ = implémenté et testé · sans marque = cible, pas encore implémenté.
 > Conventions de nommage, montants et suppression : voir [architecture.md §7](architecture.md#7-conventions).
 
 ## 1. Vue d'ensemble des domaines
@@ -36,10 +36,11 @@ document_sequences (business × type)
 
 | # | Migration | Phase | Contenu |
 |---|---|---|---|
-| 01 | `foundation` | 2 | Extensions, schéma `private`, révocations par défaut, `set_updated_at()`, types ENUM transverses, utilitaires de test |
-| 02 | `identity_tenancy` | 3 | `profiles`, `businesses`, `locations`, `business_members`, trigger création profil, RPC `create_business` |
-| 03 | `rbac` | 4 | `permissions`, `roles`, `role_permissions`, seeds système, helpers `private.has_permission`, RLS des tables Phase 3 durcies |
-| 04 | `audit` | 4 | `audit_logs` + `private.log_audit()` (nécessaire dès les premières opérations sensibles) |
+| ✅ 01 | `20261007150000_foundation` | 2 | Schéma `private`, révocation des privilèges par défaut, `set_updated_at()` |
+| ✅ 02 | `20261007160000_profiles` | 3 | `profiles`, trigger de création à l'inscription |
+| ✅ 03 | `20261007160100_tenancy_rbac` | 3-4 | `businesses`, `locations`, `business_members`, `permissions`, `roles`, `role_permissions`, seeds, helpers RLS, invariant dernier OWNER |
+| ✅ 04 | `20261007160200_audit` | 4 | `audit_logs`, `private.log_audit()`, audit des paramètres entreprise |
+| ✅ 05 | `20261007160300_tenancy_rpc` | 3-4 | RPC `create_business`, invitations, rôles, statuts, retrait, annuaire des membres |
 | 05 | `catalog` | 5 | `categories`, `units` (optionnel), `products` |
 | 06 | `inventory` | 6 | `inventory`, `inventory_movements`, fonctions internes de stock, RPC `adjust_stock`, `transfer_stock` |
 | 07 | `customers` | 7 | `customers`, `customer_transactions`, RPC `record_customer_payment` |
@@ -59,8 +60,10 @@ document_sequences (business × type)
 
 | Type | Valeurs |
 |---|---|
-| `member_status` | `INVITED`, `ACTIVE`, `SUSPENDED` |
-| `record_status` | `ACTIVE`, `ARCHIVED` |
+| `business_status` ✅ | `ACTIVE`, `SUSPENDED` (statut plateforme) |
+| `location_type` ✅ | `STORE`, `WAREHOUSE` |
+| `member_status` ✅ | `INVITED`, `ACTIVE`, `SUSPENDED` |
+| `record_status` ✅ | `ACTIVE`, `ARCHIVED` |
 | `inventory_movement_type` | `INITIAL`, `PURCHASE`, `SALE`, `RETURN`, `ADJUSTMENT`, `TRANSFER_IN`, `TRANSFER_OUT`, `LOSS`, `DAMAGE`, `SALE_CANCELLATION` |
 | `sale_status` | `COMPLETED`, `CANCELLED` |
 | `payment_status` | `UNPAID`, `PARTIAL`, `PAID` |
@@ -78,32 +81,39 @@ liés par `transfer_id`, chacun avec une quantité signée cohérente.
 Colonnes communes non répétées : `id uuid PK`, `created_at`, `updated_at`.
 « Tenant » = porte `business_id uuid NOT NULL` + `UNIQUE (business_id, id)`.
 
-### 4.1 Identité & tenancy (Phase 3)
+### 4.1 Identité & tenancy (Phases 3-4) ✅
 
 **profiles** — profil applicatif d'un utilisateur Auth (1:1).
-- `id uuid PK = auth.users.id` (`ON DELETE CASCADE`), `full_name`, `phone`, `avatar_path`,
-  `locale` (défaut `fr`), `last_business_id` (préférence UI uniquement, jamais utilisée pour la sécurité).
-- Créé par trigger sur `auth.users` (INSERT). Aucune donnée d'authentification (mot de passe, tokens).
+- `id uuid PK = auth.users.id` (`ON DELETE CASCADE`), `full_name` (≤ 120), `phone`
+  (`^\+?[0-9]{6,15}$`), `avatar_path`, `locale` (`fr` | `en` | `wo`, défaut `fr`).
+- Créé par trigger `on_auth_user_created` ; une métadonnée invalide est ignorée et ne bloque
+  jamais l'inscription. Aucune donnée d'authentification copiée.
+- Lisible/modifiable **par son propriétaire uniquement**. Les noms des collègues passent par
+  la RPC `list_business_members`.
 
 **businesses** — l'entreprise (le tenant).
-- `name`, `slug` (unique), `legal_name`, `ninea` (identifiant fiscal SN, optionnel),
-  `rccm`, `phone`, `email`, `address`, `city`, `country_code char(2)` défaut `SN`,
-  `currency_code char(3)` défaut `XOF`, `timezone` défaut `Africa/Dakar`,
-  `logo_path`, `allow_negative_stock bool` défaut `false`, `status`, `created_by`.
-- Créée uniquement via RPC `create_business` (crée aussi le membre OWNER, l'emplacement
-  par défaut et l'abonnement FREE/essai dans la même transaction).
+- `name` (2-120, normalisé), `legal_name`, `ninea`, `rccm`, `phone`, `email`, `address`, `city`,
+  `country_code` (défaut `SN`), `currency_code` (défaut `XOF`, **non modifiable** par les clients),
+  `timezone` (défaut `Africa/Dakar`, validé contre `pg_timezone_names`), `logo_path`,
+  `allow_negative_stock` (défaut `false`), `status business_status`, `created_by`.
+- Créée uniquement via `create_business()` : entreprise + emplacement par défaut
+  « Boutique principale » + membre OWNER + audit, dans une transaction. Limite : 10 entreprises
+  possédées par utilisateur (anti-abus). L'abonnement d'essai sera ajouté en Phase 11.
+- Toute modification est auditée (`business.update`, champs modifiés avant/après).
 
-**locations** — boutique / dépôt d'une entreprise (Tenant).
-- `name`, `type` (`STORE`/`WAREHOUSE`), `address`, `is_default bool`, `status`.
-- Index unique partiel : un seul `is_default = true` par entreprise.
+**locations** — boutique / dépôt (Tenant).
+- `name`, `type location_type`, `address`, `is_default`, `status record_status`.
+- Un seul emplacement par défaut par entreprise (index unique partiel), jamais archivé ;
+  noms uniques parmi les actifs. `is_default` n'est pas modifiable par les clients.
 
-**business_members** — appartenance d'un utilisateur à une entreprise (Tenant).
-- `user_id → auth.users`, `role_id → roles`, `status member_status`,
-  `invited_by`, `invited_email`, `joined_at`.
-- `UNIQUE (business_id, user_id)`. Index `(user_id)` pour « mes entreprises ».
-- Invariant (trigger) : une entreprise a toujours **au moins un OWNER actif**.
+**business_members** — appartenance (Tenant).
+- `user_id`, `role_id`, `status member_status`, `invited_by`, `joined_at`
+  (`NULL` ⇔ `INVITED`). `UNIQUE (business_id, user_id)`, index `(user_id)`.
+- Écriture **uniquement par RPC**. Le rôle doit être système ou propre à l'entreprise (trigger).
+- Invariant (trigger, verrou sur l'entreprise) : **au moins un OWNER actif**, y compris pour
+  les rôles privilégiés. La suppression d'un compte Auth qui est le dernier OWNER est donc bloquée.
 
-### 4.2 RBAC (Phase 4)
+### 4.2 RBAC (Phase 4) ✅
 
 **permissions** — catalogue global. `code text PK` (`products.read`…), `description`, `module`.
 
@@ -115,14 +125,14 @@ Colonnes communes non répétées : `id uuid PK`, `created_at`, `updated_at`.
 
 Matrice détaillée : [roles-and-permissions.md](roles-and-permissions.md).
 
-### 4.3 Audit (Phase 4, enrichi Phase 13)
+### 4.3 Audit (Phase 4 ✅, enrichi Phase 13)
 
 **audit_logs** — append-only.
 - `business_id` (nullable pour événements plateforme), `actor_id` (nullable si système),
   `action` (`sale.cancel`, `member.role_change`…), `resource_type`, `resource_id`,
   `metadata jsonb` (diff minimal, **sans données sensibles**), `created_at`.
-- Aucune policy INSERT/UPDATE/DELETE pour `authenticated` : écrit uniquement par
-  `private.log_audit()`. Index `(business_id, created_at DESC)`, `(business_id, resource_type, resource_id)`.
+- Aucun privilège INSERT/UPDATE/DELETE pour `authenticated` : écrit uniquement par
+  `private.log_audit()` (non exécutable par les rôles API). `UPDATE` bloqué par trigger pour tous. Index `(business_id, created_at DESC)`, `(business_id, resource_type, resource_id)`.
 
 ### 4.4 Catalogue (Phase 5)
 

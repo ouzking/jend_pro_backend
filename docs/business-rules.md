@@ -190,3 +190,25 @@ ajustement / perte / casse de stock · annulation de vente · remise au-delà d'
 règlement de crédit · modification de plafond de crédit · réception / annulation
 d'achat · création / modification / suppression de dépense · changement d'abonnement ·
 modification des paramètres sensibles (`allow_negative_stock`, devise).
+
+## 13. Contrat d'erreurs des RPC
+
+Les RPC lèvent des erreurs dont le **message est un code machine stable** (le client le
+traduit pour l'utilisateur) ; `detail` apporte un complément non contractuel.
+
+| SQLSTATE | Message | Signification |
+|---|---|---|
+| `42501` | `NOT_AUTHENTICATED` | Aucune session |
+| `42501` | `PERMISSION_DENIED` | Permission manquante ou entreprise inaccessible (même réponse : aucune fuite d'information) |
+| `42501` | `ROLE_ABOVE_CALLER` | Rôle cible supérieur aux droits de l'appelant |
+| `42501` | `CANNOT_MODIFY_SELF` | Action sur son propre rôle/statut |
+| `P0001` | `LAST_OWNER` | L'entreprise perdrait son dernier OWNER actif |
+| `P0001` | `ALREADY_MEMBER` | Utilisateur déjà membre ou invité |
+| `P0001` | `BUSINESS_LIMIT_REACHED` | Limite d'entreprises possédées atteinte |
+| `P0001` | `ROLE_NOT_IN_BUSINESS` | Rôle personnalisé d'une autre entreprise |
+| `P0001` | `APPEND_ONLY` | Modification d'une table en ajout seul |
+| `P0002` | `USER_NOT_FOUND`, `MEMBER_NOT_FOUND`, `ROLE_NOT_FOUND`, `INVITATION_NOT_FOUND` | Ressource introuvable |
+| `22023` | `INVALID_TIMEZONE`, `INVALID_STATUS` | Paramètre invalide |
+| `23514` / `23505` | (PostgreSQL) | Contrainte `CHECK` / unicité violée |
+
+PostgREST renvoie `42501` en HTTP 401 (anonyme) ou 403 (connecté), les autres en 400/404/409.

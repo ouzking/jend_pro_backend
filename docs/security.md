@@ -54,8 +54,9 @@ private.businesses_with_permission(p_permission text) returns setof uuid
 private.require_permission(p_business_id uuid, p_permission text) returns void
 ```
 
-Tous : `LANGUAGE sql|plpgsql STABLE SECURITY DEFINER SET search_path = ''`,
-`REVOKE ALL … FROM public`, `GRANT EXECUTE … TO authenticated`.
+Tous : `LANGUAGE sql|plpgsql STABLE SECURITY DEFINER SET search_path = ''`, exécutables par
+`authenticated` uniquement (nécessaire à l'évaluation des policies). Le schéma `private`
+n'est pas exposé par PostgREST (vérifié : `PGRST106 Invalid schema: private`).
 `SECURITY DEFINER` évite la récursion RLS sur `business_members`.
 
 ### 3.2 Forme type d'une policy (performante)
@@ -71,10 +72,20 @@ c'est la recommandation Supabase pour la performance RLS à grande échelle. Les
 colonnes utilisées (`business_id`) sont en tête des index.
 
 ### 3.3 Cas particuliers
-- **profiles** : chacun lit/modifie son profil ; les membres d'une même entreprise voient
-  le nom/avatar de leurs collègues (pas le téléphone sauf permission `members.read`).
-- **businesses** : lecture si membre ; mise à jour si `settings.manage` ; création via RPC uniquement ; pas de DELETE client.
-- **business_members** : lecture si membre (`members.read` pour la liste complète, sinon sa propre ligne) ; écriture via RPC `invite_member`, `change_member_role`, `remove_member`.
+- **profiles** : chacun lit/modifie **uniquement** son profil (colonnes `full_name`, `phone`,
+  `avatar_path`, `locale`). L'annuaire des collègues passe par `list_business_members()` :
+  nom/avatar/rôle des membres actifs pour tout membre ; e-mail, téléphone, invités et suspendus
+  seulement avec `members.read`.
+- **businesses** : lecture si membre actif d'une entreprise active ; mise à jour d'une liste
+  fermée de colonnes si `settings.manage` (ni `currency_code`, ni `status`, ni `created_by`) ;
+  création via RPC uniquement ; pas de DELETE client.
+- **business_members** : lecture de ses propres lignes (dont invitations) ou de toutes avec
+  `members.read` ; aucune écriture directe — RPC `invite_member`, `accept_invitation`,
+  `decline_invitation`, `change_member_role`, `set_member_status`, `remove_member`, `leave_business`.
+- **Hiérarchie** : on ne peut attribuer, modifier, suspendre ou retirer qu'un rôle dont les
+  permissions sont **incluses** dans les siennes (un ADMIN ne peut jamais toucher un OWNER) ;
+  personne ne modifie son propre rôle ou statut.
+- **Statuts** : seuls les membres `ACTIVE` d'entreprises `ACTIVE` ont des droits (suspension immédiate).
 - **notifications** : lecture/marquage lu par le destinataire uniquement (`user_id = auth.uid()`).
 - **sales (caissier)** : `sales.read` → toutes les ventes ; `sales.read_own` → seulement `sold_by = auth.uid()`.
 
@@ -131,7 +142,7 @@ Fichiers privés servis par **URL signées** à durée courte.
 
 ## 8. Stratégie de tests de sécurité
 
-Outil : **pgTAP** via `supabase test db`, avec impersonation :
+Outil : **pgTAP** via `supabase test db` (fichiers `supabase/tests/database/`), avec impersonation :
 
 ```sql
 set local role authenticated;
@@ -151,5 +162,9 @@ Pour **chaque table** :
 Pour **chaque RPC** : appel avec `business_id` étranger, permission manquante,
 ressource d'un autre tenant passée en paramètre, montants falsifiés, rejeu.
 
-Un test transversal vérifie automatiquement que **toutes** les tables de `public` ont
-la RLS activée et que `anon` n'a aucun privilège d'écriture.
+Un test transversal (`00100_foundation.test.sql`) vérifie à chaque exécution que **toutes**
+les tables de `public` ont la RLS activée, que `anon` n'a **aucun** privilège sur les tables ni
+les fonctions, et que toute fonction `SECURITY DEFINER` fixe son `search_path`.
+
+Validation des tests par mutation (2026-10-07) : l'injection d'une policy permissive et d'un
+droit `UPDATE (business_id)` fait échouer les suites d'isolation et de membres.

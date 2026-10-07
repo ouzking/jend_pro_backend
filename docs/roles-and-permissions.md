@@ -21,6 +21,22 @@ business_members (user × business) ──► roles ──< role_permissions >�
 
 Le client récupère ses permissions via la RPC `get_my_permissions(p_business_id)`.
 
+| RPC | Permission | Effet |
+|---|---|---|
+| `create_business(name, phone?, city?, address?)` | utilisateur connecté | Crée l'entreprise, l'emplacement par défaut, le membre OWNER |
+| `get_my_permissions(business_id)` | — | Codes de permission de l'appelant |
+| `list_my_invitations()` | — | Invitations en attente de l'appelant |
+| `list_business_members(business_id)` | membre actif (`members.read` pour les détails) | Annuaire |
+| `invite_member(business_id, email, role_code)` | `members.manage` | Invite un utilisateur existant |
+| `accept_invitation(business_id)` / `decline_invitation(business_id)` | invité | Rejoint / refuse |
+| `change_member_role(business_id, user_id, role_code)` | `members.manage` | Change le rôle |
+| `set_member_status(business_id, user_id, status)` | `members.manage` | Suspend (`SUSPENDED`) / réactive (`ACTIVE`) |
+| `remove_member(business_id, user_id)` | `members.manage` | Retire un membre ou annule une invitation |
+| `leave_business(business_id)` | membre | Quitte l'entreprise |
+
+Inviter une personne **sans compte** nécessite l'API admin d'Auth : ce sera une Edge Function
+(Phase 14) qui créera le compte puis appellera `invite_member`.
+
 ## 2. Catalogue des permissions
 
 | Module | Permission | Description |
@@ -113,10 +129,15 @@ et réceptionne les achats.
 
 ## 4. Règles de gestion des membres
 
-1. Une entreprise a **toujours au moins un OWNER actif** (trigger bloquant).
-2. Seul un OWNER peut attribuer ou retirer le rôle OWNER (transfert de propriété).
-3. Un ADMIN ne peut ni modifier ni retirer un OWNER.
-4. Un membre ne peut pas modifier son propre rôle.
+Règle générique (valable aussi pour les futurs rôles personnalisés) : **on ne peut attribuer,
+modifier, suspendre ou retirer qu'un rôle dont toutes les permissions sont détenues par
+l'appelant.** Les règles 2 et 3 en découlent (l'ADMIN n'a pas `subscription.manage`).
+
+1. Une entreprise a **toujours au moins un OWNER actif** (trigger bloquant, même pour `service_role`).
+2. Seul un OWNER peut attribuer ou retirer le rôle OWNER (transfert de propriété :
+   promouvoir un autre OWNER, puis quitter ou se faire rétrograder).
+3. Un ADMIN ne peut ni modifier, ni suspendre, ni retirer un OWNER.
+4. Un membre ne peut pas modifier son propre rôle ni son propre statut.
 5. Un membre peut quitter une entreprise, sauf s'il en est le dernier OWNER.
 6. Toute modification de rôle ou de statut est auditée (`member.role_change`, `member.remove`…).
 7. Les invitations (`status = INVITED`) n'ouvrent aucun droit avant acceptation.
