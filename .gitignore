@@ -1,0 +1,28 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+supabase/.env
+supabase/functions/.env
+supabase/functions/**/.env
+
+# Supabase CLI local state
+supabase/.branches/
+supabase/.temp/
+supabase/.supabase/
+
+# Deno / Node
+node_modules/
+.deno/
+deno.lock.bak
+
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
