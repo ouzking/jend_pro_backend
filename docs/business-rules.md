@@ -188,16 +188,20 @@ Toute erreur à n'importe quelle étape annule **tout**.
 
 ## 7. Dépenses
 
-- Montant > 0, catégorie obligatoire, date de dépense (`spent_at`, pas forcément aujourd'hui).
-- Justificatif optionnel (Storage `documents`, privé).
-- Création, modification et suppression auditées (avec montant avant/après).
+- Montant > 0, catégorie obligatoire (catégories par défaut fournies), date de dépense
+  (`spent_on`, pas forcément aujourd'hui), emplacement facultatif.
+- Justificatif optionnel (bucket privé `documents`, `{business_id}/expenses/…`, image ou PDF ≤ 5 Mo).
+- Création, modification et suppression auditées avec la ligne complète.
+- Une dépense **n'est pas un paiement** : trésorerie de la période =
+  Σ paiements `IN` − Σ paiements `OUT` − Σ dépenses.
 
 ## 8. Employés
 
 - Un **employé** (fiche RH : poste, salaire, embauche) est distinct d'un **membre**
   (compte qui se connecte). Un employé peut ne jamais se connecter ; un membre peut ne pas
   être salarié (ex. comptable externe). Lien optionnel `employees.member_id`.
-- Salaire visible uniquement avec `employees.read`.
+- Salaire visible uniquement avec `employees.read` ; tout changement de salaire est audité.
+- Un employé n'est jamais supprimé (archivage, `ended_at`) ; retirer le membre lié conserve la fiche.
 
 ## 9. Abonnements
 

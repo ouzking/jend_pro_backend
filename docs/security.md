@@ -111,7 +111,7 @@ colonnes utilisées (`business_id`) sont en tête des index.
 |---|---|---|---|---|
 | `business-assets` ✅ | Lecture publique par URL | `{business_id}/logo.*` | URL : tous ; listing API : membres | `settings.manage` |
 | `product-images` ✅ | Lecture publique par URL | `{business_id}/{product_id}/*` | URL : tous ; listing API : `products.read` | `products.update` (upload, remplacement, suppression) |
-| `documents` | **Privé** | `{business_id}/expenses/…`, `{business_id}/purchases/…` | Permission du module concerné | Idem |
+| `documents` ✅ | **Privé** (URL signées) | `{business_id}/expenses/…` (autres dossiers à venir) | `expenses.read` | upload `expenses.create`, remplacement/suppression `expenses.manage` — JPEG/PNG/WebP/PDF ≤ 5 Mo |
 | `invoices` | **Privé** | `{business_id}/{sale_id}.pdf` | `sales.read` | Edge Function (`service_role`) |
 
 Policies sur `storage.objects` basées sur `private.storage_business_id(name)` (premier

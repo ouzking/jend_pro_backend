@@ -61,7 +61,8 @@ alphabétique :
   (règles de stock, atomicité, invariant stock = Σ mouvements) · `00800` clients, crédit et
   règlements (plafonds, atomicité, invariant solde = Σ transactions) · `00900` achats
   (cycle, réception, coût moyen pondéré, paiements fournisseurs) · `01000` ventes (atomicité,
-  idempotence, crédit, remises, annulation, visibilité caissier, invariants).
+  idempotence, crédit, remises, annulation, visibilité caissier, invariants) · `01100` dépenses,
+  employés et bucket privé `documents`.
 
 Chaque fichier de test s'exécute dans une transaction annulée (`rollback`) : aucun effet
 de bord entre les tests.
@@ -82,7 +83,7 @@ npx supabase db diff --linked --schema public,private   # doit afficher "No sche
 npx supabase db lint --linked --schema public,private
 ```
 
-**État de la production** (2026-10-07) : migrations des Phases 2 à 9 appliquées. Contrôles
+**État de la production** (2026-10-07) : migrations des Phases 2 à 10 appliquées. Contrôles
 passés : schéma identique aux migrations, linter propre, `anon` refusé sur tables et RPC,
 schéma `private` non exposé. Le seed de démo n'est **jamais** envoyé en production.
 
@@ -110,7 +111,7 @@ Les tables sont livrées **avec** leur RLS et leurs tests dans la même phase.
 | 7 | Clients, compte client, crédits, règlements, socle des paiements | ✅ Terminée |
 | 8 | Fournisseurs, achats, réception (CMP), paiements fournisseurs | ✅ Terminée |
 | 9 | Ventes (caisse atomique et idempotente), paiements multiples, crédit, annulation | ✅ Terminée |
-| 10 | Dépenses, employés | ⏳ |
+| 10 | Dépenses (audit complet, justificatifs privés), employés | ✅ Terminée |
 | 11 | Abonnements, limites | ⏳ |
 | 12 | Notifications, Realtime | ⏳ |
 | 13 | Audit complet | ⏳ |

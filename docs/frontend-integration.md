@@ -1,7 +1,7 @@
 # Guide d'intégration frontend (Flutter / React) — JËND PRO
 
 > Pour : développeurs Flutter et React qui consomment le backend Supabase.
-> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 9** (voir README pour la production).
+> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 10** (voir README pour la production).
 
 ## 1. Ce qui est prêt / ce qui arrive
 
@@ -15,7 +15,8 @@
 | Clients et crédits | ✅ Prêt | Table `customers`, relevé `customer_transactions` ; RPC `record_customer_payment`, `set_customer_credit_limit`, `adjust_customer_balance` |
 | Fournisseurs, achats | ✅ Prêt | Tables `suppliers`, `supplier_products` ; lecture `purchases`, `purchase_items`, vue `supplier_balances` ; RPC d'achat |
 | **Ventes, paiements (caisse)** | ✅ Prêt | RPC `create_sale` (atomique, idempotente), `cancel_sale` ; lecture `sales`, `sale_items`, `payments` |
-| Dépenses, employés, abonnements, notifications | ⏳ Phases 10-12 | — |
+| Dépenses, employés | ✅ Prêt | Tables `expense_categories`, `expenses`, `employees` ; justificatifs dans le bucket privé `documents` |
+| Abonnements, notifications | ⏳ Phases 11-12 | — |
 
 Règle d'or : **le frontend n'est jamais une couche de sécurité ni la source de vérité des
 calculs**. Il affiche, saisit et appelle l'API ; la base décide (RLS, RPC).
@@ -229,6 +230,21 @@ Règles importantes pour l'app de caisse :
 - Erreurs fréquentes : `INSUFFICIENT_STOCK` (detail JSON), `PRODUCT_ARCHIVED`,
   `FRACTIONAL_QUANTITY_NOT_ALLOWED`, `CUSTOMER_REQUIRED_FOR_CREDIT`, `PERMISSION_DENIED`
   (remise ou crédit non autorisés pour ce rôle).
+
+## 6 sexies. Dépenses et employés
+
+```ts
+const { data: cats } = await supabase.from('expense_categories').select('id, name').eq('business_id', bid).eq('status', 'ACTIVE');
+
+// Justificatif (bucket PRIVÉ) puis dépense
+const path = `${bid}/expenses/${crypto.randomUUID()}.jpg`;
+await supabase.storage.from('documents').upload(path, file, { contentType: 'image/jpeg' });
+await supabase.from('expenses').insert({ business_id: bid, category_id: loyer, amount: 150000,
+  spent_on: '2026-10-01', method: 'BANK_TRANSFER', description: 'Loyer octobre', receipt_path: path });
+
+// Affichage du justificatif : URL signée courte (jamais d'URL publique)
+const { data } = await supabase.storage.from('documents').createSignedUrl(path, 60);
+```
 
 ## 7. Images (Storage)
 

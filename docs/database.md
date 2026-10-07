@@ -47,8 +47,7 @@ document_sequences (business × type)
 | ✅ 09 | `20261007190000_customers_payments` | 7 | `customers`, `customer_transactions`, `payments` (socle), moteur `private.apply_customer_transaction`, RPC `set_customer_credit_limit`, `record_customer_payment`, `adjust_customer_balance` |
 | ✅ 10 | `20261007200000_suppliers_purchases` | 8 | `document_sequences`, `suppliers`, `supplier_products`, `purchases`, `purchase_items`, `payments.purchase_id`, vue `supplier_balances`, RPC `save_purchase`, `order_purchase`, `receive_purchase`, `cancel_purchase`, `record_purchase_payment` |
 | ✅ 11 | `20261007210000_sales` | 9 | `sales`, `sale_items`, `sale_item_costs`, `payments.sale_id`, `customer_transactions.sale_id`, RPC `create_sale`, `cancel_sale` |
-| 10 | `expenses` | 10 | `expense_categories`, `expenses` |
-| 11 | `employees` | 10 | `employees` |
+| ✅ 12 | `20261007220000_expenses_employees` | 10 | `expense_categories` (+ défauts), `expenses` (audit complet), `employees`, bucket privé `documents` |
 | 12 | `subscriptions` | 11 | `subscription_plans`, `subscriptions`, triggers de limites |
 | 13 | `notifications` | 12 | `notifications`, publication Realtime |
 | 14 | `storage` (suite) | 8→10 | Buckets privés `documents`, `invoices` + policies |
@@ -287,16 +286,28 @@ Un produit une fois par vente. Visibles si la vente l'est. Index `(business_id, 
 - Lecture : `reports.read` (tout) ; règlements clients avec `customers.read` ; paiements
   fournisseurs avec `purchases.read` ; paiements d'une vente si la vente est visible.
 
-### 4.9 Dépenses & employés (Phase 10)
+### 4.9 Dépenses & employés (Phase 10) ✅
 
-**expense_categories** (Tenant) — `name`, `status` (catégories par défaut créées à l'ouverture).
+**expense_categories** (Tenant) — `name` (unique parmi les actives), `status`.
+10 catégories par défaut créées automatiquement à la création de l'entreprise (trigger
+`on_business_created`) : Loyer, Électricité, Eau, Salaires, Transport, Fournitures, Internet
+et téléphone, Impôts et taxes, Entretien et réparations, Autres. Lecture `expenses.read`,
+gestion `expenses.manage`.
 
-**expenses** (Tenant) — `category_id`, `amount bigint > 0`, `description`, `spent_at date`,
-`location_id`, `method payment_method`, `receipt_path` (Storage `documents`), `created_by`.
+**expenses** (Tenant) — `category_id` (FK composite), `location_id` (nullable = dépense
+générale), `amount bigint > 0`, `description`, `spent_on date` (défaut aujourd'hui), `method`,
+`receipt_path` (bucket privé `documents`, sous `{business_id}/expenses/`), `created_by` (serveur).
+- Création `expenses.create` ; modification et suppression `expenses.manage`.
+- **Audit complet** par trigger : `expense.create` (ligne), `expense.update` (avant/après),
+  `expense.delete` (ligne supprimée) → une dépense supprimée reste traçable.
+- Index `(business_id, spent_on DESC)`, `(business_id, category_id)`.
 
-**employees** (Tenant) — fiche RH, **distincte** du compte Auth.
-- `full_name`, `phone`, `position`, `salary_amount bigint`, `hired_at`, `status`,
-  `member_id` (nullable → `business_members` : l'employé a un accès à l'app).
+**employees** (Tenant) — fiche RH, **distincte** du compte de connexion.
+- `full_name`, `phone`, `position`, `salary_amount` (mensuel brut), `hired_at`, `ended_at`
+  (≥ `hired_at`), `notes`, `status`, `member_id` (lien facultatif vers `business_members`,
+  FK composite, unique ; mis à NULL si le membre est retiré).
+- Lecture `employees.read` (salaires inclus) ; création/modification `employees.manage` ;
+  jamais supprimés (archivage). Changement de salaire audité.
 
 ### 4.10 Abonnements (Phase 11)
 

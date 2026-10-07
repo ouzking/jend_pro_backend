@@ -365,6 +365,177 @@ export type Database = {
           },
         ];
       };
+      employees: {
+        Row: {
+          business_id: string;
+          created_at: string;
+          created_by: string | null;
+          ended_at: string | null;
+          full_name: string;
+          hired_at: string | null;
+          id: string;
+          member_id: string | null;
+          notes: string | null;
+          phone: string | null;
+          position: string | null;
+          salary_amount: number | null;
+          status: Database["public"]["Enums"]["record_status"];
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          ended_at?: string | null;
+          full_name: string;
+          hired_at?: string | null;
+          id?: string;
+          member_id?: string | null;
+          notes?: string | null;
+          phone?: string | null;
+          position?: string | null;
+          salary_amount?: number | null;
+          status?: Database["public"]["Enums"]["record_status"];
+          updated_at?: string;
+        };
+        Update: {
+          business_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          ended_at?: string | null;
+          full_name?: string;
+          hired_at?: string | null;
+          id?: string;
+          member_id?: string | null;
+          notes?: string | null;
+          phone?: string | null;
+          position?: string | null;
+          salary_amount?: number | null;
+          status?: Database["public"]["Enums"]["record_status"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "employees_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employees_member_fkey";
+            columns: ["business_id", "member_id"];
+            isOneToOne: false;
+            referencedRelation: "business_members";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
+      expense_categories: {
+        Row: {
+          business_id: string;
+          created_at: string;
+          id: string;
+          name: string;
+          status: Database["public"]["Enums"]["record_status"];
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          created_at?: string;
+          id?: string;
+          name: string;
+          status?: Database["public"]["Enums"]["record_status"];
+          updated_at?: string;
+        };
+        Update: {
+          business_id?: string;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          status?: Database["public"]["Enums"]["record_status"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "expense_categories_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      expenses: {
+        Row: {
+          amount: number;
+          business_id: string;
+          category_id: string;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          id: string;
+          location_id: string | null;
+          method: Database["public"]["Enums"]["payment_method"];
+          receipt_path: string | null;
+          spent_on: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: number;
+          business_id: string;
+          category_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          location_id?: string | null;
+          method?: Database["public"]["Enums"]["payment_method"];
+          receipt_path?: string | null;
+          spent_on?: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount?: number;
+          business_id?: string;
+          category_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          location_id?: string | null;
+          method?: Database["public"]["Enums"]["payment_method"];
+          receipt_path?: string | null;
+          spent_on?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "expenses_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "expenses_category_fkey";
+            columns: ["business_id", "category_id"];
+            isOneToOne: false;
+            referencedRelation: "expense_categories";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "expenses_location_fkey";
+            columns: ["business_id", "location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
       inventory: {
         Row: {
           business_id: string;
