@@ -224,6 +224,7 @@ export type Database = {
           id: string;
           note: string | null;
           payment_id: string | null;
+          sale_id: string | null;
           type: Database["public"]["Enums"]["customer_transaction_type"];
         };
         ComputedFields: never;
@@ -237,6 +238,7 @@ export type Database = {
           id?: string;
           note?: string | null;
           payment_id?: string | null;
+          sale_id?: string | null;
           type: Database["public"]["Enums"]["customer_transaction_type"];
         };
         Update: {
@@ -249,6 +251,7 @@ export type Database = {
           id?: string;
           note?: string | null;
           payment_id?: string | null;
+          sale_id?: string | null;
           type?: Database["public"]["Enums"]["customer_transaction_type"];
         };
         Relationships: [
@@ -264,6 +267,13 @@ export type Database = {
             columns: ["business_id", "payment_id"];
             isOneToOne: false;
             referencedRelation: "payments";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "customer_transactions_sale_fkey";
+            columns: ["business_id", "sale_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
             referencedColumns: ["business_id", "id"];
           },
         ];
@@ -522,6 +532,7 @@ export type Database = {
           paid_at: string;
           purchase_id: string | null;
           recorded_by: string | null;
+          sale_id: string | null;
         };
         ComputedFields: never;
         Insert: {
@@ -538,6 +549,7 @@ export type Database = {
           paid_at?: string;
           purchase_id?: string | null;
           recorded_by?: string | null;
+          sale_id?: string | null;
         };
         Update: {
           amount?: number;
@@ -553,6 +565,7 @@ export type Database = {
           paid_at?: string;
           purchase_id?: string | null;
           recorded_by?: string | null;
+          sale_id?: string | null;
         };
         Relationships: [
           {
@@ -581,6 +594,13 @@ export type Database = {
             columns: ["business_id", "purchase_id"];
             isOneToOne: false;
             referencedRelation: "purchases";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "payments_sale_fkey";
+            columns: ["business_id", "sale_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
             referencedColumns: ["business_id", "id"];
           },
         ];
@@ -970,6 +990,183 @@ export type Database = {
           },
         ];
       };
+      sale_item_costs: {
+        Row: {
+          business_id: string;
+          sale_item_id: string;
+          unit_cost: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          sale_item_id: string;
+          unit_cost: number;
+        };
+        Update: {
+          business_id?: string;
+          sale_item_id?: string;
+          unit_cost?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sale_item_costs_item_fkey";
+            columns: ["business_id", "sale_item_id"];
+            isOneToOne: false;
+            referencedRelation: "sale_items";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
+      sale_items: {
+        Row: {
+          business_id: string;
+          created_at: string;
+          discount_amount: number;
+          id: string;
+          line_total: number;
+          product_id: string;
+          product_name: string;
+          quantity: number;
+          sale_id: string;
+          unit_price: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          created_at?: string;
+          discount_amount?: number;
+          id?: string;
+          line_total: number;
+          product_id: string;
+          product_name: string;
+          quantity: number;
+          sale_id: string;
+          unit_price: number;
+        };
+        Update: {
+          business_id?: string;
+          created_at?: string;
+          discount_amount?: number;
+          id?: string;
+          line_total?: number;
+          product_id?: string;
+          product_name?: string;
+          quantity?: number;
+          sale_id?: string;
+          unit_price?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_product_fkey";
+            columns: ["business_id", "product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "sale_items_sale_fkey";
+            columns: ["business_id", "sale_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
+      sales: {
+        Row: {
+          amount_paid: number;
+          business_id: string;
+          cancel_reason: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          client_reference: string;
+          created_at: string;
+          credit_amount: number;
+          customer_id: string | null;
+          discount_amount: number;
+          id: string;
+          location_id: string;
+          notes: string | null;
+          number: string;
+          payment_status: Database["public"]["Enums"]["payment_status"] | null;
+          sold_at: string;
+          sold_by: string | null;
+          status: Database["public"]["Enums"]["sale_status"];
+          subtotal_amount: number;
+          total_amount: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_paid?: number;
+          business_id: string;
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          client_reference: string;
+          created_at?: string;
+          credit_amount?: number;
+          customer_id?: string | null;
+          discount_amount?: number;
+          id?: string;
+          location_id: string;
+          notes?: string | null;
+          number: string;
+          payment_status?: never;
+          sold_at?: string;
+          sold_by?: string | null;
+          status?: Database["public"]["Enums"]["sale_status"];
+          subtotal_amount: number;
+          total_amount: number;
+          updated_at?: string;
+        };
+        Update: {
+          amount_paid?: number;
+          business_id?: string;
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          client_reference?: string;
+          created_at?: string;
+          credit_amount?: number;
+          customer_id?: string | null;
+          discount_amount?: number;
+          id?: string;
+          location_id?: string;
+          notes?: string | null;
+          number?: string;
+          payment_status?: never;
+          sold_at?: string;
+          sold_by?: string | null;
+          status?: Database["public"]["Enums"]["sale_status"];
+          subtotal_amount?: number;
+          total_amount?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sales_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_customer_fkey";
+            columns: ["business_id", "customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "sales_location_fkey";
+            columns: ["business_id", "location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
       supplier_products: {
         Row: {
           business_id: string;
@@ -1123,6 +1320,14 @@ export type Database = {
         Args: { p_purchase_id: string; p_reason: string };
         Returns: undefined;
       };
+      cancel_sale: {
+        Args: {
+          p_reason: string;
+          p_refund_method?: Database["public"]["Enums"]["payment_method"];
+          p_sale_id: string;
+        };
+        Returns: undefined;
+      };
       change_member_role: {
         Args: { p_business_id: string; p_role_code: string; p_user_id: string };
         Returns: undefined;
@@ -1143,6 +1348,19 @@ export type Database = {
           p_city?: string;
           p_name: string;
           p_phone?: string;
+        };
+        Returns: string;
+      };
+      create_sale: {
+        Args: {
+          p_business_id: string;
+          p_client_reference: string;
+          p_customer_id?: string;
+          p_discount_amount?: number;
+          p_items: Json;
+          p_location_id: string;
+          p_notes?: string;
+          p_payments?: Json;
         };
         Returns: string;
       };
@@ -1296,6 +1514,7 @@ export type Database = {
       payment_status: "UNPAID" | "PARTIAL" | "PAID";
       purchase_status: "DRAFT" | "ORDERED" | "RECEIVED" | "CANCELLED";
       record_status: "ACTIVE" | "ARCHIVED";
+      sale_status: "COMPLETED" | "CANCELLED";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1458,6 +1677,7 @@ export const Constants = {
       payment_status: ["UNPAID", "PARTIAL", "PAID"],
       purchase_status: ["DRAFT", "ORDERED", "RECEIVED", "CANCELLED"],
       record_status: ["ACTIVE", "ARCHIVED"],
+      sale_status: ["COMPLETED", "CANCELLED"],
     },
   },
 } as const;

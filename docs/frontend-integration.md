@@ -1,7 +1,7 @@
 # Guide d'intégration frontend (Flutter / React) — JËND PRO
 
 > Pour : développeurs Flutter et React qui consomment le backend Supabase.
-> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 8** (voir README pour la production).
+> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 9** (voir README pour la production).
 
 ## 1. Ce qui est prêt / ce qui arrive
 
@@ -14,7 +14,7 @@
 | Stock / inventaire | ✅ Prêt | Lecture `inventory`, `inventory_movements` ; RPC `adjust_stock`, `count_stock`, `transfer_stock`, `list_low_stock` |
 | Clients et crédits | ✅ Prêt | Table `customers`, relevé `customer_transactions` ; RPC `record_customer_payment`, `set_customer_credit_limit`, `adjust_customer_balance` |
 | Fournisseurs, achats | ✅ Prêt | Tables `suppliers`, `supplier_products` ; lecture `purchases`, `purchase_items`, vue `supplier_balances` ; RPC d'achat |
-| **Ventes, paiements (caisse)** | ⏳ Phase 9 | Une RPC `create_sale` atomique sera fournie : ne rien calculer « en vrai » côté client |
+| **Ventes, paiements (caisse)** | ✅ Prêt | RPC `create_sale` (atomique, idempotente), `cancel_sale` ; lecture `sales`, `sale_items`, `payments` |
 | Dépenses, employés, abonnements, notifications | ⏳ Phases 10-12 | — |
 
 Règle d'or : **le frontend n'est jamais une couche de sécurité ni la source de vérité des
@@ -190,6 +190,46 @@ await supabase.from('supplier_balances').select('supplier_id, amount_due, advanc
 - Le serveur ignore tout total envoyé : il recalcule à partir des lignes.
 - Réception partielle non gérée en V1 : créer un nouvel achat pour le reliquat.
 
+## 6 quinquies. Caisse (ventes)
+
+```ts
+// 1. Générer la référence AU MOMENT où le panier est validé, la stocker avec la vente locale.
+const clientReference = crypto.randomUUID();   // Flutter : const Uuid().v4()
+
+// 2. Envoyer (et renvoyer tel quel en cas d'échec réseau : jamais de doublon)
+const { data: saleId, error } = await supabase.rpc('create_sale', {
+  p_business_id: bid,
+  p_client_reference: clientReference,
+  p_location_id: loc,
+  p_items: [
+    { product_id: riz, quantity: 2.5 },                         // prix = prix catalogue
+    { product_id: huile, quantity: 2, discount_amount: 200 },   // remise : sales.discount
+  ],
+  p_payments: [{ method: 'CASH', amount: 2000 }, { method: 'WAVE', amount: 2000, external_reference: 'TX-9' }],
+  p_customer_id: customerId,      // obligatoire si une partie reste à crédit
+  p_discount_amount: 0,           // remise globale
+});
+
+// 3. Ticket
+await supabase.from('sales').select('number, total_amount, amount_paid, credit_amount, sold_at, sale_items(product_name, quantity, unit_price, discount_amount, line_total), payments(method, amount, direction)').eq('id', saleId).single();
+
+// Annulation (sales.cancel)
+await supabase.rpc('cancel_sale', { p_sale_id: saleId, p_reason: 'Erreur de caisse', p_refund_method: 'CASH' });
+```
+
+Règles importantes pour l'app de caisse :
+- **Ne jamais envoyer de prix** : le serveur applique le prix catalogue. Le total affiché
+  avant validation est une estimation ; la valeur de référence est celle de la vente renvoyée.
+- **Monnaie rendue** : n'envoyer que le montant dû (ex. total 4 250, client donne 5 000 →
+  `CASH 4250`, rendre 750 à l'écran). Envoyer plus → `PAYMENT_EXCEEDS_TOTAL`.
+- Reste à payer > 0 ⇒ crédit : client obligatoire, plafond vérifié (`CREDIT_LIMIT_EXCEEDED`).
+- **Hors ligne** : garder chaque vente en file locale avec son `client_reference` ; rejouer
+  dans l'ordre au retour du réseau. Un rejeu renvoie l'id de la vente déjà créée.
+- Un caissier ne voit que **ses** ventes (`sales.read_own`) ; ne pas afficher coûts/marges.
+- Erreurs fréquentes : `INSUFFICIENT_STOCK` (detail JSON), `PRODUCT_ARCHIVED`,
+  `FRACTIONAL_QUANTITY_NOT_ALLOWED`, `CUSTOMER_REQUIRED_FOR_CREDIT`, `PERMISSION_DENIED`
+  (remise ou crédit non autorisés pour ce rôle).
+
 ## 7. Images (Storage)
 
 | Bucket | Chemin obligatoire | Formats / taille | Qui écrit |
@@ -238,5 +278,5 @@ Utiliser `.select()` après l'update pour vérifier le résultat.
 - Pagination systématique (`range`) ; ne jamais charger un catalogue entier.
 - Sélectionner les colonnes utiles plutôt que `*` sur les listes.
 - Pas de clé `service_role`, pas de logique de stock/caisse côté client.
-- Ventes hors ligne (Phase 9) : chaque vente portera un `client_reference` (UUID généré
-  par l'app) pour être rejouée sans doublon — prévoir ce champ dans le modèle local.
+- Ventes hors ligne : chaque vente porte un `client_reference` (UUID généré par l'app) pour
+  être rejouée sans doublon (voir §6 quinquies).

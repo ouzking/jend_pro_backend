@@ -46,6 +46,8 @@ Le client récupère ses permissions via la RPC `get_my_permissions(p_business_i
 | `receive_purchase(purchase_id)` | `purchases.receive` | Réception : stock + CMP |
 | `cancel_purchase(purchase_id, reason)` | `purchases.cancel` | Annule avant réception |
 | `record_purchase_payment(purchase_id, amount, method, location_id, external_reference?, note?)` | `purchases.payments` | Paiement fournisseur |
+| `create_sale(business_id, client_reference, location_id, items, payments?, customer_id?, discount?, notes?)` | `sales.create` (+ `sales.discount`, `sales.credit`) | Vente atomique et idempotente |
+| `cancel_sale(sale_id, reason, refund_method?)` | `sales.cancel` | Annulation totale avec remboursement |
 
 Inviter une personne **sans compte** nécessite l'API admin d'Auth : ce sera une Edge Function
 (Phase 14) qui créera le compte puis appellera `invite_member`.

@@ -1,6 +1,6 @@
 -- Customers, credit, customer payments: rules, atomicity, ledger invariant, tenancy.
 begin;
-select plan(44);
+select plan(39);
 
 select tests.setup_two_tenants();
 
@@ -98,25 +98,6 @@ select throws_ok($$ select private.apply_customer_transaction(null, null, 'PAYME
 select tests.clear_authentication();
 
 -- =============================================================================
--- Credit sales through the engine (used by sales in Phase 9)
--- =============================================================================
-with c as (
-  insert into public.customers (business_id, name, credit_limit)
-  values (pg_temp.k('a'), 'Sans crédit', 0), (pg_temp.k('a'), 'Client VIP', null) returning id, name)
-insert into ids select case name when 'Sans crédit' then 'nocredit' else 'vip' end, id from c;
-
-select throws_ok(format($$ select private.apply_customer_transaction(%L, %L, 'CREDIT_SALE', 40000) $$, pg_temp.k('a'), pg_temp.k('fatou')),
-  'P0001', 'CREDIT_LIMIT_EXCEEDED', 'credit beyond the limit is refused (15 000 + 40 000 > 50 000)');
-select lives_ok(format($$ select private.apply_customer_transaction(%L, %L, 'CREDIT_SALE', 35000) $$, pg_temp.k('a'), pg_temp.k('fatou')),
-  'credit up to the limit is accepted');
-select throws_ok(format($$ select private.apply_customer_transaction(%L, %L, 'CREDIT_SALE', 1) $$, pg_temp.k('a'), pg_temp.k('nocredit')),
-  'P0001', 'CREDIT_LIMIT_EXCEEDED', 'a customer with limit 0 gets no credit');
-select lives_ok(format($$ select private.apply_customer_transaction(%L, %L, 'CREDIT_SALE', 9000000) $$, pg_temp.k('a'), pg_temp.k('vip')),
-  'a customer without ceiling (NULL) can get any credit');
-select throws_ok(format($$ select private.apply_customer_transaction(%L, %L, 'CREDIT_SALE', 1000) $$, pg_temp.k('b'), pg_temp.k('fatou')),
-  'P0002', 'CUSTOMER_NOT_FOUND', 'the engine refuses a customer from another business');
-
--- =============================================================================
 -- Invariants and append-only
 -- =============================================================================
 select is_empty($$
@@ -157,8 +138,8 @@ update public.customers set name = 'pwned' where id = pg_temp.k('fatou');
 select tests.clear_authentication();
 select is((select name from public.customers where id = pg_temp.k('fatou')), 'Fatou Sow',
   'cross-tenant customer update had no effect');
-select is((select balance from public.customers where id = pg_temp.k('fatou')), 50000::bigint,
-  'final balance: 30 000 - 10 000 - 5 000 + 35 000');
+select is((select balance from public.customers where id = pg_temp.k('fatou')), 15000::bigint,
+  'final balance: 30 000 - 10 000 - 5 000 (credit sales are covered in 01000_sales)');
 
 select tests.authenticate_as_anon();
 select throws_ok($$ select * from public.customers $$, '42501', null, 'anon cannot read customers');

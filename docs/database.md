@@ -46,7 +46,7 @@ document_sequences (business × type)
 | ✅ 08 | `20261007180000_inventory` | 6 | `inventory`, `inventory_movements`, moteur `private.apply_stock_movement`, RPC `adjust_stock`, `count_stock`, `transfer_stock`, `list_low_stock` |
 | ✅ 09 | `20261007190000_customers_payments` | 7 | `customers`, `customer_transactions`, `payments` (socle), moteur `private.apply_customer_transaction`, RPC `set_customer_credit_limit`, `record_customer_payment`, `adjust_customer_balance` |
 | ✅ 10 | `20261007200000_suppliers_purchases` | 8 | `document_sequences`, `suppliers`, `supplier_products`, `purchases`, `purchase_items`, `payments.purchase_id`, vue `supplier_balances`, RPC `save_purchase`, `order_purchase`, `receive_purchase`, `cancel_purchase`, `record_purchase_payment` |
-| 09 | `sales` | 9 | `document_sequences`, `sales`, `sale_items`, liens `payments.sale_id`, RPC `create_sale`, `cancel_sale` |
+| ✅ 11 | `20261007210000_sales` | 9 | `sales`, `sale_items`, `sale_item_costs`, `payments.sale_id`, `customer_transactions.sale_id`, RPC `create_sale`, `cancel_sale` |
 | 10 | `expenses` | 10 | `expense_categories`, `expenses` |
 | 11 | `employees` | 10 | `employees` |
 | 12 | `subscriptions` | 11 | `subscription_plans`, `subscriptions`, triggers de limites |
@@ -66,7 +66,7 @@ document_sequences (business × type)
 | `member_status` ✅ | `INVITED`, `ACTIVE`, `SUSPENDED` |
 | `record_status` ✅ | `ACTIVE`, `ARCHIVED` |
 | `inventory_movement_type` ✅ | `INITIAL`, `PURCHASE`, `SALE`, `SALE_CANCELLATION`, `RETURN`, `ADJUSTMENT`, `TRANSFER_OUT`, `TRANSFER_IN`, `LOSS`, `DAMAGE` |
-| `sale_status` | `COMPLETED`, `CANCELLED` |
+| `sale_status` ✅ | `COMPLETED`, `CANCELLED` |
 | `payment_status` ✅ | `UNPAID`, `PARTIAL`, `PAID` |
 | `purchase_status` ✅ | `DRAFT`, `ORDERED`, `RECEIVED`, `CANCELLED` |
 | `payment_method` ✅ | `CASH`, `WAVE`, `ORANGE_MONEY`, `FREE_MONEY`, `CARD`, `BANK_TRANSFER`, `CHEQUE`, `OTHER` |
@@ -250,32 +250,42 @@ Un produit une seule fois par achat.
 **supplier_balances** (vue, `security_invoker`) — par fournisseur : `amount_due`
 (achats reçus non soldés), `advances_paid` (acomptes sur achats en attente), `unpaid_purchases`.
 
-### 4.8 Ventes & paiements (Phase 9)
+### 4.8 Ventes & paiements (Phase 9) ✅
 
-**document_sequences** (Tenant) — `(business_id, doc_type)` PK, `prefix`, `next_value`.
-Incrément sous verrou de ligne → numéros sans doublon par entreprise.
+(`document_sequences` : voir §4.7.)
 
-**sales** (Tenant)
-- `number` (ex. `V-000123`), `client_reference uuid` (idempotence, `UNIQUE (business_id, client_reference)`),
-  `location_id`, `customer_id` (nullable), `status sale_status`,
-  `subtotal_amount`, `discount_amount`, `total_amount`, `amount_paid`,
-  `credit_amount` (part à crédit), `payment_status`, `sold_at`, `sold_by`,
-  `cancelled_at`, `cancelled_by`, `cancel_reason`.
-- `CHECK (total_amount = subtotal_amount - discount_amount)`,
-  `CHECK (amount_paid + credit_amount = total_amount)` (hors rendu monnaie).
-- Index : `(business_id, sold_at DESC)`, `(business_id, customer_id)`, `(business_id, sold_by, sold_at DESC)`.
+**sales** (Tenant) — écrite **uniquement** par `create_sale` / `cancel_sale`.
+- `number` (`V-000001`, unique par entreprise), `client_reference uuid NOT NULL`
+  (`UNIQUE (business_id, client_reference)` : idempotence), `location_id`, `customer_id`
+  (nullable), `status`, `subtotal_amount` (Σ lignes après remises de ligne), `discount_amount`
+  (remise globale), `total_amount`, `amount_paid` (Σ paiements `IN` à la caisse),
+  `credit_amount` (part laissée au compte client), `payment_status` (**générée**), `notes`,
+  `sold_at`, `sold_by` (serveur), `cancelled_at` / `cancelled_by` / `cancel_reason`.
+- CHECK : `total = subtotal − discount` ; `amount_paid + credit_amount = total` ;
+  crédit ⇒ client renseigné ; statut ↔ date d'annulation.
+- Index : `(business_id, sold_at DESC)`, `(business_id, customer_id)` partiel,
+  `(business_id, sold_by, sold_at DESC)` (ventes du caissier).
+- Lecture : `sales.read` (toutes) ou `sales.read_own` (`sold_by = auth.uid()`).
 
-**sale_items** (Tenant) — `sale_id`, `product_id`, `product_name` (copie figée),
-`quantity > 0`, `unit_price`, `unit_cost` (copie figée pour la marge), `discount_amount`, `line_total`.
+**sale_items** (Tenant) — `sale_id`, `product_id`, `product_name` et `unit_price` **figés**,
+`quantity > 0`, `discount_amount` (remise de ligne), `line_total = round(qty × prix) − remise`.
+Un produit une fois par vente. Visibles si la vente l'est. Index `(business_id, sale_id)`,
+`(business_id, product_id)` (meilleures ventes).
+
+**sale_item_costs** (Tenant) — `sale_item_id` PK, `unit_cost` figé à la vente. Lecture :
+`products.read_cost` **et** `sales.read` → le caissier ne voit jamais les marges.
+
+`customer_transactions.sale_id` ✅ : obligatoire ⇔ type `CREDIT_SALE` / `SALE_CANCELLATION`.
 
 **payments** (Tenant) — tout mouvement d'argent. ✅ Socle créé en Phase 7.
 - `location_id` (caisse / boutique concernée, obligatoire), `direction`, `method`,
-  `amount bigint > 0`, contexte : `customer_id` (règlement de crédit) ✅, `sale_id` (Phase 9),
-  `purchase_id` (Phase 8) ; `external_reference` (id Wave/OM, **unique par entreprise et
+  `amount bigint > 0`, contexte : `customer_id` (règlement de crédit) ✅, `sale_id` ✅,
+  `purchase_id` ✅ ; `external_reference` (id Wave/OM, **unique par entreprise et
   méthode** → un webhook rejoué ne crée pas de doublon), `note`, `paid_at`, `recorded_by`.
 - `CHECK` : exactement un contexte renseigné (contrainte étendue à chaque phase).
 - **Append-only** : un remboursement est un paiement `OUT`, jamais une modification.
-- Lecture : `reports.read` (tout) ; règlements clients visibles avec `customers.read`.
+- Lecture : `reports.read` (tout) ; règlements clients avec `customers.read` ; paiements
+  fournisseurs avec `purchases.read` ; paiements d'une vente si la vente est visible.
 
 ### 4.9 Dépenses & employés (Phase 10)
 

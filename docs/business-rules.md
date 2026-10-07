@@ -108,10 +108,13 @@ Opérations disponibles (Phase 6) :
 
 ## 4. Ventes
 
-### 4.1 Création (`create_sale`) — une seule transaction
+### 4.1 Création (`create_sale`) — une seule transaction ✅
 1. Vérifier `sales.create` (+ `sales.discount` si remise, + `sales.credit` si crédit).
-2. Idempotence : si `client_reference` existe déjà pour l'entreprise → renvoyer la vente existante.
-3. Lire produits **de l'entreprise** (prix et coûts serveur), refuser produits archivés.
+2. Idempotence : si `client_reference` existe déjà pour l'entreprise → renvoyer la vente
+   existante, **même si le contenu envoyé diffère** (un rejeu n'est jamais une nouvelle vente).
+3. Lire produits **de l'entreprise** : le prix est **toujours** le prix catalogue (le client
+   ne peut pas imposer un prix) ; une réduction passe par une remise explicite. Refuser
+   produits archivés, quantités fractionnaires interdites, doublons de produit.
 4. Calculer lignes, sous-total, remise, total.
 5. Numéroter la vente (`document_sequences`, sous verrou).
 6. Insérer `sales` + `sale_items`.
@@ -120,28 +123,35 @@ Opérations disponibles (Phase 6) :
    (ex. 5 000 cash + 10 000 Wave).
 9. Si reste dû > 0 : vérifier client obligatoire + plafond de crédit, écrire
    `customer_transactions (CREDIT_SALE)` et mettre à jour `customers.balance`.
-10. Audit + éventuelles notifications (vente importante, stock faible).
+10. Audit des remises (`sale.discount`) ; notifications (vente importante, stock faible) en Phase 12.
 
 Toute erreur à n'importe quelle étape annule **tout**.
 
 ### 4.2 Paiement d'une vente
 - `amount_paid + credit_amount = total_amount`.
-- Rendu monnaie : si l'espèce reçue dépasse le dû, seul le montant dû est enregistré ;
-  la monnaie rendue est une information d'affichage (`change_given` facultatif), pas un paiement.
-- `payment_status` : `PAID` si `credit_amount = 0`, `PARTIAL` si `0 < amount_paid < total`, `UNPAID` si `amount_paid = 0`.
+- Rendu monnaie : l'app n'envoie que le montant dû ; la monnaie rendue est un calcul
+  d'affichage, pas un paiement. Paiements > total → `PAYMENT_EXCEEDS_TOTAL`.
+- `payment_status` (dérivé) : `PAID` si tout est payé à la caisse, `PARTIAL` si une partie
+  est à crédit, `UNPAID` si tout est à crédit. Les règlements ultérieurs du crédit sont suivis
+  sur le **compte client**, pas sur la vente.
 - Vente à crédit impossible sans client identifié.
 
 ### 4.3 Annulation (`cancel_sale`)
 - Permission `sales.cancel`, motif obligatoire, vente `COMPLETED` uniquement.
-- Remise en stock (`SALE_CANCELLATION`), remboursement enregistré comme paiement `OUT`
-  lié à la vente (les paiements `IN` d'origine ne sont jamais modifiés : append-only),
-  écriture inverse du crédit client (`SALE_CANCELLATION`).
+- Annulation **totale** uniquement en V1 (pas de retour partiel).
+- Remise en stock (`SALE_CANCELLATION`) à l'emplacement de la vente.
+- Crédit : la part à crédit est annulée **dans la limite du solde actuel du client**
+  (`SALE_CANCELLATION`) ; la partie de ce crédit que le client a déjà réglée lui est
+  remboursée. Remboursement total = payé à la caisse + crédit déjà réglé, enregistré comme
+  un paiement `OUT` lié à la vente (moyen choisi, défaut `CASH`). Les paiements `IN`
+  d'origine ne sont jamais modifiés.
 - Trésorerie = Σ paiements `IN` − Σ paiements `OUT`.
 - Une vente n'est **jamais supprimée** ni modifiée après validation : on annule et on recrée.
 - Délai d'annulation éventuellement limité (paramètre entreprise, à définir).
 
 ### 4.4 Remises
-- Remise par ligne et/ou globale, en montant (FCFA). Total jamais négatif.
+- Remise par ligne et/ou globale, en montant (FCFA), permission `sales.discount`.
+  Une remise ne dépasse jamais le montant concerné. Toute vente avec remise est auditée.
 
 ## 5. Clients et crédit
 
@@ -248,6 +258,8 @@ traduit pour l'utilisateur) ; `detail` apporte un complément non contractuel.
 | `22023` | `INVALID_AMOUNT`, `ITEMS_REQUIRED`, `INVALID_ITEM`, `DUPLICATE_PRODUCT`, `DISCOUNT_EXCEEDS_TOTAL` | Montant / lignes invalides |
 | `P0001` | `INVALID_PURCHASE_STATUS`, `PURCHASE_NOT_EDITABLE`, `PURCHASE_HAS_PAYMENTS`, `TOTAL_BELOW_AMOUNT_PAID` | Règle d'achat |
 | `P0002` | `SUPPLIER_NOT_FOUND`, `PURCHASE_NOT_FOUND` | Ressource absente de l'entreprise |
+| `22023` | `CLIENT_REFERENCE_REQUIRED`, `INVALID_PAYMENT`, `PAYMENT_EXCEEDS_TOTAL` | Vente invalide |
+| `P0001` | `PRODUCT_ARCHIVED`, `CUSTOMER_REQUIRED_FOR_CREDIT`, `SALE_ALREADY_CANCELLED` | Règle de vente |
 | `23514` / `23505` | (PostgreSQL) | Contrainte `CHECK` / unicité violée |
 
 PostgREST renvoie `42501` en HTTP 401 (anonyme) ou 403 (connecté), les autres en 400/404/409.
