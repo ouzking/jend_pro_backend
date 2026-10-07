@@ -1,7 +1,7 @@
 # Guide d'intégration frontend (Flutter / React) — JËND PRO
 
 > Pour : développeurs Flutter et React qui consomment le backend Supabase.
-> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 14** (voir README pour la production).
+> Mis à jour à chaque phase backend. État actuel : **backend V1 complet (Phases 1 à 15)**.
 
 ## 1. Ce qui est prêt / ce qui arrive
 
@@ -17,6 +17,7 @@
 | **Ventes, paiements (caisse)** | ✅ Prêt | RPC `create_sale` (atomique, idempotente), `cancel_sale` ; lecture `sales`, `sale_items`, `payments` |
 | Dépenses, employés | ✅ Prêt | Tables `expense_categories`, `expenses`, `employees` ; justificatifs dans le bucket privé `documents` |
 | Abonnements | ✅ Lecture | RPC `get_subscription_status`, tables `subscription_plans`, `subscriptions` (le paiement viendra en Phase 14) |
+| Tableau de bord / rapports | ✅ Prêt | RPC `get_dashboard_summary`, `get_sales_timeseries`, `get_top_products` |
 | Notifications (temps réel) | ✅ Prêt | Table `notifications` + Realtime, RPC `mark_all_notifications_read` |
 
 Règle d'or : **le frontend n'est jamais une couche de sécurité ni la source de vérité des
@@ -312,6 +313,20 @@ la RPC `invite_member` suffit.
 
 Le paiement de l'abonnement passera par `billing-webhook` côté serveur (aucun appel depuis
 l'app) : après paiement, rafraîchir `get_subscription_status`.
+
+## 6 undecies. Tableau de bord
+
+```ts
+// Dates = jours locaux de l'entreprise (YYYY-MM-DD), bornes incluses, 366 jours max.
+const { data: kpi } = await supabase.rpc('get_dashboard_summary', { p_business_id: bid, p_from: '2026-10-01', p_to: '2026-10-31' });
+// kpi.revenue, kpi.sales_count, kpi.average_basket, kpi.estimated_margin (null sans products.read_cost),
+// kpi.cash_in, kpi.cash_out, kpi.expenses, kpi.net_cash_flow, kpi.customers_debt, kpi.low_stock_count…
+
+const { data: series } = await supabase.rpc('get_sales_timeseries', { p_business_id: bid, p_from: '2026-10-01', p_to: '2026-10-31', p_granularity: 'day' });
+const { data: top } = await supabase.rpc('get_top_products', { p_business_id: bid, p_from: '2026-10-01', p_to: '2026-10-31', p_limit: 10 });
+```
+
+Ne jamais recalculer ces indicateurs côté client à partir des listes de ventes.
 
 ## 7. Images (Storage)
 

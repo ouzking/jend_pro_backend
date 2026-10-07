@@ -53,12 +53,16 @@ React  ──┼─► Supabase ─► PostgreSQL  React  ──┼─► Larave
 | Stock (`apply_stock_movement`) | `InventoryService` | Multi-emplacement avancé, prévisions |
 | Webhooks Wave / Orange Money | `PaymentGateway` + queues | Retry, idempotence, monitoring |
 | Abonnements | `BillingService` | Facturation récurrente, relances |
-| Rapports / analytics | `ReportingService` + cache Redis | Agrégations coûteuses |
+| Rapports / analytics (`get_dashboard_summary`, `get_sales_timeseries`, `get_top_products`) | `ReportingService` + cache Redis | Agrégations coûteuses |
+| Membres (`invite_member`, `change_member_role`…) + Edge Function `invite-member` | `MembershipService` | Règle de hiérarchie générique à porter telle quelle |
+| `billing-webhook` + `platform_activate_subscription` | `BillingWebhookController` + job | Idempotence par `billing_events` à conserver |
+| `pg_cron` `daily_maintenance` | Scheduler Laravel | Rappels, expirations, rétention |
 | IA (résumé quotidien, prévisions) | Jobs planifiés | Traitements longs |
 
 ## 5. Points d'attention
 
-- Les tests pgTAP de la V1 deviennent la **spécification de parité** pour la V2.
+- Les tests pgTAP de la V1 (564) deviennent la **spécification de parité** pour la V2 ; le
+  garde-fou `01700_hardening` donne l'inventaire exact de la surface API à reproduire.
 - Ne pas mélanger écritures Laravel et RPC Supabase sur une **même** opération pendant la
   transition (une seule source d'écriture par opération à un instant donné).
 - Les triggers d'invariants (dernier OWNER, limites d'abonnement, `updated_at`) peuvent

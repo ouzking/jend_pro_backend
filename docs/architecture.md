@@ -153,6 +153,22 @@ propriétaires), purge des notifications (lues > 90 j, toutes > 180 j).
 Orange Money vers `billing-webhook`, génération de factures PDF (bucket `invoices`), envoi SMS,
 résumé quotidien / IA.
 
+## 6 ter. Qualité, garde-fous et CI (Phase 15)
+
+- **Tests** : 564 tests pgTAP (19 fichiers) + 20 tests Deno (Edge Functions). Les suites
+  d'isolation ont été **validées par mutation** (failles injectées volontairement → échec).
+- **Garde-fous d'architecture** (`01700_hardening.test.sql`) : types d'argent, `timestamptz`,
+  clés primaires, `search_path` de toutes les fonctions, propriétaire des `SECURITY DEFINER`,
+  **surface RPC figée**, **tables modifiables par les clients figées**, liste revue des RPC
+  `SECURITY DEFINER` sans `require_permission`, policies SELECT présentes, index `business_id`,
+  vues `security_invoker`, buckets publics, publication Realtime. Toute évolution de la surface
+  de sécurité impose une modification consciente de ce test (revue).
+- **Invariants comptables** testés : stock = Σ mouvements, solde client = Σ transactions,
+  sous-total = Σ lignes, payé = Σ paiements `IN`.
+- **CI** : `.github/workflows/ci.yml` reconstruit la base depuis les migrations (+ seed de démo
+  qui rejoue achats, ventes et crédit via les RPC), lance pgTAP, le lint SQL et les tests des
+  Edge Functions à chaque push / pull request.
+
 ## 7. Conventions
 
 ### 7.1 Nommage SQL
@@ -244,3 +260,6 @@ résumé quotidien / IA.
 | 2026-10-07 | Coût figé des ventes isolé dans `sale_item_costs` (même règle que `product_costs`) | Phase 9 |
 | 2026-10-07 | Mode restreint appliqué à un seul endroit (`businesses_with_permission` + `permissions.allowed_when_restricted`) | Phase 11 |
 | 2026-10-08 | Realtime limité à `notifications` ; les événements métier passent par des notifications générées par triggers | Phase 12 |
+| 2026-10-08 | Journal d'audit immuable pour tous les rôles (purge plateforme explicite uniquement) | Phase 13 |
+| 2026-10-08 | Edge Functions limitées à ce qui exige un secret serveur ; tâches planifiées en `pg_cron` | Phase 14 |
+| 2026-10-08 | Analytics en RPC SQL ; FK vers `auth.users` non indexées (revue documentée) ; garde-fous d'architecture en test | Phase 15 |

@@ -52,8 +52,8 @@ document_sequences (business × type)
 | ✅ 14 | `20261008090000_notifications` | 12 | `notifications`, événements par triggers (stock faible, vente importante, invitation, abonnement), `businesses.large_sale_threshold`, publication Realtime |
 | ✅ 15 | `20261008100000_audit_hardening` | 13 | `audit_logs.actor_role`, immutabilité (DELETE bloqué sauf purge plateforme), événements emplacements / clients / fournisseurs / produits, RPC `get_audit_log` |
 | ✅ 16 | `20261008110000_platform_jobs` | 14 | `billing_events` (idempotence), RPC `platform_activate_subscription` (service_role), `private.daily_maintenance` + `pg_cron` |
-| 14 | `storage` (suite) | 8→10 | Buckets privés `documents`, `invoices` + policies |
-| 15 | `analytics` | 15 | Vues / RPC de reporting, index complémentaires |
+| ✅ 17 | `20261008120000_analytics_hardening` | 15 | RPC `get_dashboard_summary`, `get_sales_timeseries`, `get_top_products` ; index `product_costs(business_id)`, `sale_item_costs(business_id, sale_item_id)` |
+| — | *(futur)* | — | Bucket privé `invoices` (factures PDF générées par Edge Function) — non construit tant que le besoin n'est pas confirmé |
 
 > `audit_logs` est avancé en Phase 4 (au lieu de 13) : les RPC des phases 5–10 doivent
 > pouvoir auditer dès leur création. La Phase 13 enrichit et durcit l'audit.
@@ -385,12 +385,39 @@ RLS sans policy ni privilège : accessible uniquement côté serveur.
 
 Les destinataires sont résolus sur les **rôles** (indépendamment du mode restreint).
 
+### 4.12 Analytics (Phase 15) ✅
+
+Agrégations calculées **en base** (jamais côté client), permission `reports.read`, marges
+seulement avec `products.read_cost` (sinon `null`), dates = jours locaux de l'entreprise
+(`businesses.timezone`), période ≤ 366 jours, filtre facultatif par emplacement :
+
+| RPC | Résultat |
+|---|---|
+| `get_dashboard_summary(business, from, to, location?)` | `revenue`, `sales_count`, `average_basket`, `discounts`, `credit_given`, `cancelled_count`, `active_customers`, `estimated_margin`, `cash_in`, `cash_out`, `expenses`, `net_cash_flow`, `customers_debt`, `low_stock_count` |
+| `get_sales_timeseries(business, from, to, 'day'\|'week'\|'month', location?)` | `period`, `revenue`, `sales_count`, `estimated_margin` (périodes vides = 0) |
+| `get_top_products(business, from, to, limit?, location?)` | `product_id`, `product_name`, `quantity`, `revenue`, `estimated_margin` |
+
+Définitions : CA = Σ `total_amount` des ventes `COMPLETED` ; marge estimée = Σ (`line_total`
+− `quantity × unit_cost` figé) − remises globales ; trésorerie = paiements `IN` − `OUT` − dépenses.
+Les montants de `get_top_products` sont par ligne (avant remise globale).
+
 ## 5. Index — principes
 
 - Toute FK utilisée en filtre/jointure fréquente est indexée (PostgreSQL ne le fait pas automatiquement).
 - Les index composites commencent par `business_id` (toutes les requêtes sont filtrées par tenant).
 - Pas d'index « au cas où » : chaque index est justifié par une requête documentée.
-- Vérification en Phase 15 via `supabase inspect db` (index inutilisés, seq scans).
+- Toute table tenant a un index commençant par `business_id` (garde-fou testé), sauf
+  `notifications` (interrogée par `user_id`) et `billing_events` (par identifiant d'événement).
+- **Clés étrangères volontairement non indexées** (revue Phase 15) : les colonnes `created_by`
+  / `sold_by` / `recorded_by` / `invited_by` / `actor_id` vers `auth.users` (seule la
+  suppression d'un compte, opération rare d'administration, en profiterait, au prix d'écritures
+  plus lourdes sur les tables les plus actives), et les FK vers des parents jamais supprimés en
+  usage normal (`locations`, `sales`, `payments`, `roles`, `subscription_plans`). Les FK
+  composites dont la colonne discriminante est déjà indexée (`purchase_items.purchase_id`,
+  `employees.member_id`, `supplier_products.supplier_id`…) sont couvertes.
+- À volumétrie réelle : suivre `npx supabase inspect db index-stats --linked` (index
+  inutilisés) et `... seq-scans --linked`, et ajouter `pg_trgm` sur `products.name` si la
+  recherche textuelle devient lente.
 
 ## 6. Décisions ouvertes
 

@@ -174,3 +174,6 @@ filtré, au même endroit que la vérification des rôles.
 |---|---|---|
 | `get_subscription_status(business_id)` | membre actif | Plan, statut, restreint ?, limites, utilisation |
 | `get_audit_log(business_id, limit?, before?, before_id?, action?, resource_type?, resource_id?, actor_id?)` | `audit.read` | Journal d'audit paginé avec nom de l'acteur |
+| `get_dashboard_summary(business_id, from, to, location_id?)` | `reports.read` (+ `products.read_cost` pour la marge) | Indicateurs de la période |
+| `get_sales_timeseries(business_id, from, to, granularity?, location_id?)` | `reports.read` | Évolution jour / semaine / mois |
+| `get_top_products(business_id, from, to, limit?, location_id?)` | `reports.read` | Meilleures ventes |

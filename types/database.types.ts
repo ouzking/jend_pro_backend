@@ -1784,9 +1784,33 @@ export type Database = {
           resource_type: string;
         }[];
       };
+      get_dashboard_summary: {
+        Args: {
+          p_business_id: string;
+          p_from: string;
+          p_location_id?: string;
+          p_to: string;
+        };
+        Returns: Json;
+      };
       get_my_permissions: {
         Args: { p_business_id: string };
         Returns: string[];
+      };
+      get_sales_timeseries: {
+        Args: {
+          p_business_id: string;
+          p_from: string;
+          p_granularity?: string;
+          p_location_id?: string;
+          p_to: string;
+        };
+        Returns: {
+          estimated_margin: number;
+          period: string;
+          revenue: number;
+          sales_count: number;
+        }[];
       };
       get_subscription_status: {
         Args: { p_business_id: string };
@@ -1799,6 +1823,22 @@ export type Database = {
           status: Database["public"]["Enums"]["subscription_status"];
           trial_ends_at: string;
           usage: Json;
+        }[];
+      };
+      get_top_products: {
+        Args: {
+          p_business_id: string;
+          p_from: string;
+          p_limit?: number;
+          p_location_id?: string;
+          p_to: string;
+        };
+        Returns: {
+          estimated_margin: number;
+          product_id: string;
+          product_name: string;
+          quantity: number;
+          revenue: number;
         }[];
       };
       invite_member: {

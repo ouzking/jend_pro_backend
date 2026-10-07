@@ -189,5 +189,9 @@ Un test transversal (`00100_foundation.test.sql`) vérifie à chaque exécution 
 les tables de `public` ont la RLS activée, que `anon` n'a **aucun** privilège sur les tables ni
 les fonctions, et que toute fonction `SECURITY DEFINER` fixe son `search_path`.
 
+Garde-fous permanents (`01700_hardening.test.sql`) : la liste des RPC exposées, la liste des
+tables/colonnes modifiables par les clients et la liste des `SECURITY DEFINER` sans
+`require_permission` sont figées ; toute modification fait échouer la CI jusqu'à revue.
+
 Validation des tests par mutation (2026-10-07) : l'injection d'une policy permissive et d'un
 droit `UPDATE (business_id)` fait échouer les suites d'isolation et de membres.

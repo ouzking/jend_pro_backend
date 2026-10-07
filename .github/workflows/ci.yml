@@ -1,0 +1,46 @@
+# Backend CI: every push / PR rebuilds the database from the migrations,
+# runs the full pgTAP suite (security, tenancy, business rules, guardrails),
+# lints the SQL and runs the Edge Function unit + integration tests.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Start Supabase (migrations + seed)
+        run: supabase start -x studio,imgproxy,vector,logflare,supavisor
+
+      - name: Database tests (pgTAP)
+        run: supabase test db
+
+      - name: SQL lint
+        run: supabase db lint --schema public,private --fail-on error
+
+      - name: Edge Functions tests
+        run: |
+          printf 'BILLING_WEBHOOK_SECRET=%s\nSITE_URL=http://127.0.0.1:3000\n' "$(openssl rand -hex 32)" > supabase/functions/.env
+          bash scripts/test-functions.sh
+
+      - name: Edge Functions logs (on failure)
+        if: failure()
+        run: cat /tmp/jendpro-functions.log || true
