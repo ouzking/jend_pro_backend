@@ -41,6 +41,11 @@ Le client récupère ses permissions via la RPC `get_my_permissions(p_business_i
 | `set_customer_credit_limit(customer_id, limit)` | `customers.manage` | Plafond de crédit (`0` aucun, `NULL` illimité) |
 | `record_customer_payment(customer_id, amount, method, location_id, external_reference?, note?)` | `customers.payments` | Règlement d'une dette client |
 | `adjust_customer_balance(customer_id, amount, reason)` | `customers.manage` | Correction / reprise de dette |
+| `save_purchase(business_id, purchase_id?, supplier_id?, location_id, items, discount?, supplier_reference?, notes?)` | `purchases.create` | Crée / modifie un achat (lignes remplacées) |
+| `order_purchase(purchase_id)` | `purchases.create` | Passe l'achat en commandé |
+| `receive_purchase(purchase_id)` | `purchases.receive` | Réception : stock + CMP |
+| `cancel_purchase(purchase_id, reason)` | `purchases.cancel` | Annule avant réception |
+| `record_purchase_payment(purchase_id, amount, method, location_id, external_reference?, note?)` | `purchases.payments` | Paiement fournisseur |
 
 Inviter une personne **sans compte** nécessite l'API admin d'Auth : ce sera une Edge Function
 (Phase 14) qui créera le compte puis appellera `invite_member`.

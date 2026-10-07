@@ -1,7 +1,7 @@
 # Guide d'intégration frontend (Flutter / React) — JËND PRO
 
 > Pour : développeurs Flutter et React qui consomment le backend Supabase.
-> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 7** (voir README pour la production).
+> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 8** (voir README pour la production).
 
 ## 1. Ce qui est prêt / ce qui arrive
 
@@ -13,7 +13,7 @@
 | Catégories, produits, coûts, images produits, logo | ✅ Prêt | Tables `categories`, `products`, `product_costs` + Storage |
 | Stock / inventaire | ✅ Prêt | Lecture `inventory`, `inventory_movements` ; RPC `adjust_stock`, `count_stock`, `transfer_stock`, `list_low_stock` |
 | Clients et crédits | ✅ Prêt | Table `customers`, relevé `customer_transactions` ; RPC `record_customer_payment`, `set_customer_credit_limit`, `adjust_customer_balance` |
-| Fournisseurs, achats | ⏳ Phase 8 | idem |
+| Fournisseurs, achats | ✅ Prêt | Tables `suppliers`, `supplier_products` ; lecture `purchases`, `purchase_items`, vue `supplier_balances` ; RPC d'achat |
 | **Ventes, paiements (caisse)** | ⏳ Phase 9 | Une RPC `create_sale` atomique sera fournie : ne rien calculer « en vrai » côté client |
 | Dépenses, employés, abonnements, notifications | ⏳ Phases 10-12 | — |
 
@@ -169,6 +169,26 @@ await supabase.rpc('record_customer_payment', { p_customer_id: cid, p_amount: 10
 
 - `balance` = ce que le client **doit**. `credit_limit` : `0` = pas de crédit, `null` = illimité.
 - Erreurs à traduire : `AMOUNT_EXCEEDS_BALANCE`, `CREDIT_LIMIT_EXCEEDED`, `CUSTOMER_HAS_BALANCE`.
+
+## 6 quater. Achats
+
+```ts
+// Créer (purchase_id null) ou modifier un achat : les lignes sont remplacées en bloc
+const { data: purchaseId } = await supabase.rpc('save_purchase', {
+  p_business_id: bid, p_purchase_id: null, p_supplier_id: supplierId, p_location_id: loc,
+  p_items: [{ product_id: riz, quantity: 25, unit_cost: 600 }, { product_id: huile, quantity: 12, unit_cost: 1200 }],
+  p_discount_amount: 0, p_supplier_reference: 'FAC-2026-118',
+});
+await supabase.rpc('order_purchase', { p_purchase_id: purchaseId });        // facultatif
+await supabase.rpc('receive_purchase', { p_purchase_id: purchaseId });      // stock + coût moyen
+await supabase.rpc('record_purchase_payment', { p_purchase_id: purchaseId, p_amount: 20000, p_method: 'CASH', p_location_id: loc });
+
+// Dettes fournisseurs
+await supabase.from('supplier_balances').select('supplier_id, amount_due, advances_paid').eq('business_id', bid);
+```
+
+- Le serveur ignore tout total envoyé : il recalcule à partir des lignes.
+- Réception partielle non gérée en V1 : créer un nouvel achat pour le reliquat.
 
 ## 7. Images (Storage)
 

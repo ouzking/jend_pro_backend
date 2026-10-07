@@ -45,7 +45,7 @@ document_sequences (business × type)
 | ✅ 07 | `20261007170100_storage_catalog` | 5 | Buckets `product-images`, `business-assets` + policies par entreprise |
 | ✅ 08 | `20261007180000_inventory` | 6 | `inventory`, `inventory_movements`, moteur `private.apply_stock_movement`, RPC `adjust_stock`, `count_stock`, `transfer_stock`, `list_low_stock` |
 | ✅ 09 | `20261007190000_customers_payments` | 7 | `customers`, `customer_transactions`, `payments` (socle), moteur `private.apply_customer_transaction`, RPC `set_customer_credit_limit`, `record_customer_payment`, `adjust_customer_balance` |
-| 08 | `suppliers_purchases` | 8 | `suppliers`, `supplier_products`, `purchases`, `purchase_items`, RPC `create_purchase`, `receive_purchase` |
+| ✅ 10 | `20261007200000_suppliers_purchases` | 8 | `document_sequences`, `suppliers`, `supplier_products`, `purchases`, `purchase_items`, `payments.purchase_id`, vue `supplier_balances`, RPC `save_purchase`, `order_purchase`, `receive_purchase`, `cancel_purchase`, `record_purchase_payment` |
 | 09 | `sales` | 9 | `document_sequences`, `sales`, `sale_items`, liens `payments.sale_id`, RPC `create_sale`, `cancel_sale` |
 | 10 | `expenses` | 10 | `expense_categories`, `expenses` |
 | 11 | `employees` | 10 | `employees` |
@@ -67,8 +67,8 @@ document_sequences (business × type)
 | `record_status` ✅ | `ACTIVE`, `ARCHIVED` |
 | `inventory_movement_type` ✅ | `INITIAL`, `PURCHASE`, `SALE`, `SALE_CANCELLATION`, `RETURN`, `ADJUSTMENT`, `TRANSFER_OUT`, `TRANSFER_IN`, `LOSS`, `DAMAGE` |
 | `sale_status` | `COMPLETED`, `CANCELLED` |
-| `payment_status` | `UNPAID`, `PARTIAL`, `PAID` |
-| `purchase_status` | `DRAFT`, `ORDERED`, `RECEIVED`, `CANCELLED` |
+| `payment_status` ✅ | `UNPAID`, `PARTIAL`, `PAID` |
+| `purchase_status` ✅ | `DRAFT`, `ORDERED`, `RECEIVED`, `CANCELLED` |
 | `payment_method` ✅ | `CASH`, `WAVE`, `ORANGE_MONEY`, `FREE_MONEY`, `CARD`, `BANK_TRANSFER`, `CHEQUE`, `OTHER` |
 | `payment_direction` ✅ | `IN` (encaissement), `OUT` (décaissement) |
 | `customer_transaction_type` ✅ | `CREDIT_SALE`, `PAYMENT`, `ADJUSTMENT`, `SALE_CANCELLATION` |
@@ -222,20 +222,33 @@ grand livre ; verrouille le client, refuse un solde négatif (`AMOUNT_EXCEEDS_BA
 
 **Invariant vérifié par les tests** : `customers.balance = Σ customer_transactions.amount`.
 
-### 4.7 Fournisseurs & achats (Phase 8)
+### 4.7 Fournisseurs & achats (Phase 8) ✅
 
-**suppliers** (Tenant) — `name`, `phone`, `email`, `address`, `contact_name`, `notes`, `status`.
+**document_sequences** (Tenant, interne) — `(business_id, doc_type)` PK (`SALE` | `PURCHASE`),
+`prefix` (`V-` / `A-`), `next_value`. Incrémenté sous verrou par
+`private.next_document_number()` → numéros sans doublon par entreprise (`A-000001`).
+RLS activée sans aucune policy ni privilège : jamais accessible via l'API.
 
-**supplier_products** (Tenant) — `(business_id, supplier_id, product_id)` unique,
-`supplier_sku`, `last_cost bigint`.
+**suppliers** (Tenant) — `name`, `contact_name`, `phone` (normalisé), `email`, `address`,
+`notes`, `status`, `created_by`. CRUD direct : lecture `suppliers.read`, écriture `suppliers.manage`.
 
-**purchases** (Tenant) — `number` (séquence), `supplier_id`, `location_id` (réception),
-`status purchase_status`, `ordered_at`, `received_at`, `subtotal_amount`,
-`discount_amount`, `total_amount`, `amount_paid`, `payment_status`, `notes`, `created_by`.
-Dette fournisseur = `total_amount − amount_paid` (vue `supplier_balances`).
+**supplier_products** (Tenant) — PK `(supplier_id, product_id)`, FK composites, `supplier_sku`,
+`last_cost` (maintenu par la réception, non modifiable par le client).
 
-**purchase_items** (Tenant) — `purchase_id`, `product_id`, `quantity > 0`, `unit_cost ≥ 0`,
-`line_total`. La **réception** (`receive_purchase`) génère les mouvements `PURCHASE`.
+**purchases** (Tenant) — `number` (unique par entreprise), `supplier_id` (nullable : achat
+sans fournisseur enregistré), `location_id` (réception), `status`, `supplier_reference`
+(n° de facture fournisseur), `subtotal_amount`, `discount_amount`, `total_amount`,
+`amount_paid`, `payment_status` (**colonne générée** à partir de `amount_paid` / `total_amount`),
+`ordered_at`, `received_at`/`received_by`, `cancelled_at`/`cancelled_by`/`cancel_reason`, `created_by`.
+- CHECK : `total = subtotal − discount`, `amount_paid ≤ total`, cohérence statut ↔ dates.
+- **Lecture seule** (`purchases.read`) ; écriture uniquement par RPC.
+
+**purchase_items** (Tenant) — `purchase_id` (CASCADE : lignes remplacées en bloc),
+`product_id`, `quantity > 0`, `unit_cost ≥ 0`, `line_total = round(quantity × unit_cost)`.
+Un produit une seule fois par achat.
+
+**supplier_balances** (vue, `security_invoker`) — par fournisseur : `amount_due`
+(achats reçus non soldés), `advances_paid` (acomptes sur achats en attente), `unpaid_purchases`.
 
 ### 4.8 Ventes & paiements (Phase 9)
 

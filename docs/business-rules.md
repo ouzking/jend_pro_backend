@@ -160,13 +160,21 @@ Toute erreur à n'importe quelle étape annule **tout**.
 
 ## 6. Fournisseurs et achats
 
-- Cycle : `DRAFT → ORDERED → RECEIVED`, ou `DRAFT/ORDERED → CANCELLED`.
-- La **réception** (`receive_purchase`) est atomique : mouvements `PURCHASE`, mise à jour
-  du CMP, `supplier_products.last_cost`, statut `RECEIVED`, audit.
+- Cycle : `DRAFT → ORDERED → RECEIVED`, ou `DRAFT/ORDERED → CANCELLED`
+  (`ORDERED` est facultatif : on peut réceptionner directement un brouillon).
+- `save_purchase` crée ou remplace **en bloc** les lignes d'un achat `DRAFT`/`ORDERED` ;
+  totaux calculés par le serveur ; remise ≤ sous-total ; le nouveau total ne peut pas être
+  inférieur aux acomptes déjà versés.
+- La **réception** (`receive_purchase`) est atomique et unique : mouvements `PURCHASE`
+  (lignes traitées par ordre de produit), mise à jour du CMP sur le stock total de
+  l'entreprise (stock négatif compté comme 0), `supplier_products.last_cost`, statut
+  `RECEIVED`, audit. Les lignes de produits non stockés n'ont pas d'effet sur le stock.
+- Annulation : uniquement avant réception, sans paiement, motif obligatoire.
 - Réception partielle : hors périmètre V1 (on crée un nouvel achat pour le reliquat).
 - Un achat réceptionné n'est plus modifiable (correction par ajustement de stock audité).
-- Dette fournisseur = `total_amount − amount_paid` ; paiements `OUT` liés à l'achat ;
-  `amount_paid ≤ total_amount`.
+- Dette fournisseur = `total_amount − amount_paid` des achats reçus ; paiements `OUT` liés
+  à l'achat ; `amount_paid ≤ total_amount` ; acomptes autorisés avant réception ; pas de
+  paiement sur un achat annulé. `payment_status` est dérivé automatiquement.
 
 ## 7. Dépenses
 
@@ -237,7 +245,9 @@ traduit pour l'utilisateur) ; `detail` apporte un complément non contractuel.
 | `P0001` | `INITIAL_ALREADY_SET`, `PRODUCT_NOT_STOCKED`, `FRACTIONAL_QUANTITY_NOT_ALLOWED`, `LOCATION_ARCHIVED`, `LOCATION_HAS_STOCK`, `CATEGORY_TOO_DEEP` | Règle de stock / catalogue |
 | `P0002` | `PRODUCT_NOT_FOUND`, `LOCATION_NOT_FOUND`, `CUSTOMER_NOT_FOUND` | Ressource absente de l'entreprise |
 | `P0001` | `AMOUNT_EXCEEDS_BALANCE`, `CREDIT_LIMIT_EXCEEDED` (`detail` JSON), `CUSTOMER_HAS_BALANCE`, `CUSTOMER_ARCHIVED` | Règle de crédit client |
-| `22023` | `INVALID_AMOUNT` | Montant invalide |
+| `22023` | `INVALID_AMOUNT`, `ITEMS_REQUIRED`, `INVALID_ITEM`, `DUPLICATE_PRODUCT`, `DISCOUNT_EXCEEDS_TOTAL` | Montant / lignes invalides |
+| `P0001` | `INVALID_PURCHASE_STATUS`, `PURCHASE_NOT_EDITABLE`, `PURCHASE_HAS_PAYMENTS`, `TOTAL_BELOW_AMOUNT_PAID` | Règle d'achat |
+| `P0002` | `SUPPLIER_NOT_FOUND`, `PURCHASE_NOT_FOUND` | Ressource absente de l'entreprise |
 | `23514` / `23505` | (PostgreSQL) | Contrainte `CHECK` / unicité violée |
 
 PostgREST renvoie `42501` en HTTP 401 (anonyme) ou 403 (connecté), les autres en 400/404/409.

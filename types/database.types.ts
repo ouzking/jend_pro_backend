@@ -325,6 +325,36 @@ export type Database = {
           },
         ];
       };
+      document_sequences: {
+        Row: {
+          business_id: string;
+          doc_type: string;
+          next_value: number;
+          prefix: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          doc_type: string;
+          next_value?: number;
+          prefix: string;
+        };
+        Update: {
+          business_id?: string;
+          doc_type?: string;
+          next_value?: number;
+          prefix?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_sequences_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       inventory: {
         Row: {
           business_id: string;
@@ -490,6 +520,7 @@ export type Database = {
           method: Database["public"]["Enums"]["payment_method"];
           note: string | null;
           paid_at: string;
+          purchase_id: string | null;
           recorded_by: string | null;
         };
         ComputedFields: never;
@@ -505,6 +536,7 @@ export type Database = {
           method: Database["public"]["Enums"]["payment_method"];
           note?: string | null;
           paid_at?: string;
+          purchase_id?: string | null;
           recorded_by?: string | null;
         };
         Update: {
@@ -519,6 +551,7 @@ export type Database = {
           method?: Database["public"]["Enums"]["payment_method"];
           note?: string | null;
           paid_at?: string;
+          purchase_id?: string | null;
           recorded_by?: string | null;
         };
         Relationships: [
@@ -541,6 +574,13 @@ export type Database = {
             columns: ["business_id", "location_id"];
             isOneToOne: false;
             referencedRelation: "locations";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "payments_purchase_fkey";
+            columns: ["business_id", "purchase_id"];
+            isOneToOne: false;
+            referencedRelation: "purchases";
             referencedColumns: ["business_id", "id"];
           },
         ];
@@ -707,6 +747,153 @@ export type Database = {
         };
         Relationships: [];
       };
+      purchase_items: {
+        Row: {
+          business_id: string;
+          created_at: string;
+          id: string;
+          line_total: number;
+          product_id: string;
+          purchase_id: string;
+          quantity: number;
+          unit_cost: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          created_at?: string;
+          id?: string;
+          line_total: number;
+          product_id: string;
+          purchase_id: string;
+          quantity: number;
+          unit_cost: number;
+        };
+        Update: {
+          business_id?: string;
+          created_at?: string;
+          id?: string;
+          line_total?: number;
+          product_id?: string;
+          purchase_id?: string;
+          quantity?: number;
+          unit_cost?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "purchase_items_product_fkey";
+            columns: ["business_id", "product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "purchase_items_purchase_fkey";
+            columns: ["business_id", "purchase_id"];
+            isOneToOne: false;
+            referencedRelation: "purchases";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
+      purchases: {
+        Row: {
+          amount_paid: number;
+          business_id: string;
+          cancel_reason: string | null;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          created_at: string;
+          created_by: string | null;
+          discount_amount: number;
+          id: string;
+          location_id: string;
+          notes: string | null;
+          number: string;
+          ordered_at: string | null;
+          payment_status: Database["public"]["Enums"]["payment_status"] | null;
+          received_at: string | null;
+          received_by: string | null;
+          status: Database["public"]["Enums"]["purchase_status"];
+          subtotal_amount: number;
+          supplier_id: string | null;
+          supplier_reference: string | null;
+          total_amount: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount_paid?: number;
+          business_id: string;
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          discount_amount?: number;
+          id?: string;
+          location_id: string;
+          notes?: string | null;
+          number: string;
+          ordered_at?: string | null;
+          payment_status?: never;
+          received_at?: string | null;
+          received_by?: string | null;
+          status?: Database["public"]["Enums"]["purchase_status"];
+          subtotal_amount?: number;
+          supplier_id?: string | null;
+          supplier_reference?: string | null;
+          total_amount?: number;
+          updated_at?: string;
+        };
+        Update: {
+          amount_paid?: number;
+          business_id?: string;
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          discount_amount?: number;
+          id?: string;
+          location_id?: string;
+          notes?: string | null;
+          number?: string;
+          ordered_at?: string | null;
+          payment_status?: never;
+          received_at?: string | null;
+          received_by?: string | null;
+          status?: Database["public"]["Enums"]["purchase_status"];
+          subtotal_amount?: number;
+          supplier_id?: string | null;
+          supplier_reference?: string | null;
+          total_amount?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "purchases_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "purchases_location_fkey";
+            columns: ["business_id", "location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "purchases_supplier_fkey";
+            columns: ["business_id", "supplier_id"];
+            isOneToOne: false;
+            referencedRelation: "suppliers";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
       role_permissions: {
         Row: {
           created_at: string;
@@ -783,9 +970,134 @@ export type Database = {
           },
         ];
       };
+      supplier_products: {
+        Row: {
+          business_id: string;
+          created_at: string;
+          last_cost: number | null;
+          product_id: string;
+          supplier_id: string;
+          supplier_sku: string | null;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          created_at?: string;
+          last_cost?: number | null;
+          product_id: string;
+          supplier_id: string;
+          supplier_sku?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          business_id?: string;
+          created_at?: string;
+          last_cost?: number | null;
+          product_id?: string;
+          supplier_id?: string;
+          supplier_sku?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "supplier_products_product_fkey";
+            columns: ["business_id", "product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "supplier_products_supplier_fkey";
+            columns: ["business_id", "supplier_id"];
+            isOneToOne: false;
+            referencedRelation: "suppliers";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
+      suppliers: {
+        Row: {
+          address: string | null;
+          business_id: string;
+          contact_name: string | null;
+          created_at: string;
+          created_by: string | null;
+          email: string | null;
+          id: string;
+          name: string;
+          notes: string | null;
+          phone: string | null;
+          status: Database["public"]["Enums"]["record_status"];
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          address?: string | null;
+          business_id: string;
+          contact_name?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          email?: string | null;
+          id?: string;
+          name: string;
+          notes?: string | null;
+          phone?: string | null;
+          status?: Database["public"]["Enums"]["record_status"];
+          updated_at?: string;
+        };
+        Update: {
+          address?: string | null;
+          business_id?: string;
+          contact_name?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          email?: string | null;
+          id?: string;
+          name?: string;
+          notes?: string | null;
+          phone?: string | null;
+          status?: Database["public"]["Enums"]["record_status"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
-      [_ in never]: never;
+      supplier_balances: {
+        Row: {
+          advances_paid: number | null;
+          amount_due: number | null;
+          business_id: string | null;
+          supplier_id: string | null;
+          unpaid_purchases: number | null;
+        };
+        ComputedFields: never;
+        Relationships: [
+          {
+            foreignKeyName: "purchases_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "purchases_supplier_fkey";
+            columns: ["business_id", "supplier_id"];
+            isOneToOne: false;
+            referencedRelation: "suppliers";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
     };
     Functions: {
       accept_invitation: {
@@ -806,6 +1118,10 @@ export type Database = {
           p_type: Database["public"]["Enums"]["inventory_movement_type"];
         };
         Returns: string;
+      };
+      cancel_purchase: {
+        Args: { p_purchase_id: string; p_reason: string };
+        Returns: undefined;
       };
       change_member_role: {
         Args: { p_business_id: string; p_role_code: string; p_user_id: string };
@@ -878,6 +1194,8 @@ export type Database = {
           role_name: string;
         }[];
       };
+      order_purchase: { Args: { p_purchase_id: string }; Returns: undefined };
+      receive_purchase: { Args: { p_purchase_id: string }; Returns: undefined };
       record_customer_payment: {
         Args: {
           p_amount: number;
@@ -889,9 +1207,33 @@ export type Database = {
         };
         Returns: string;
       };
+      record_purchase_payment: {
+        Args: {
+          p_amount: number;
+          p_external_reference?: string;
+          p_location_id: string;
+          p_method: Database["public"]["Enums"]["payment_method"];
+          p_note?: string;
+          p_purchase_id: string;
+        };
+        Returns: string;
+      };
       remove_member: {
         Args: { p_business_id: string; p_user_id: string };
         Returns: undefined;
+      };
+      save_purchase: {
+        Args: {
+          p_business_id: string;
+          p_discount_amount?: number;
+          p_items: Json;
+          p_location_id: string;
+          p_notes?: string;
+          p_purchase_id: string;
+          p_supplier_id: string;
+          p_supplier_reference?: string;
+        };
+        Returns: string;
       };
       set_customer_credit_limit: {
         Args: { p_credit_limit: number; p_customer_id: string };
@@ -951,6 +1293,8 @@ export type Database = {
         | "BANK_TRANSFER"
         | "CHEQUE"
         | "OTHER";
+      payment_status: "UNPAID" | "PARTIAL" | "PAID";
+      purchase_status: "DRAFT" | "ORDERED" | "RECEIVED" | "CANCELLED";
       record_status: "ACTIVE" | "ARCHIVED";
     };
     CompositeTypes: {
@@ -1111,6 +1455,8 @@ export const Constants = {
         "CHEQUE",
         "OTHER",
       ],
+      payment_status: ["UNPAID", "PARTIAL", "PAID"],
+      purchase_status: ["DRAFT", "ORDERED", "RECEIVED", "CANCELLED"],
       record_status: ["ACTIVE", "ARCHIVED"],
     },
   },
