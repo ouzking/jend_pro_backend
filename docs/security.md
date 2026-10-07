@@ -146,8 +146,22 @@ pgTAP positionnent `storage.allow_delete_query` comme le fait l'API pour tester 
 
 - `.env*` ignorés par Git ; `.env.example` sans valeurs réelles.
 - Secrets Edge Functions : `supabase secrets set NAME=value` (jamais en dur).
-- Webhooks (Wave, Orange Money) : vérification de signature obligatoire, idempotence par
-  `external_reference`.
+- Webhooks : `billing-webhook` exige `x-jendpro-timestamp` + `x-jendpro-signature`
+  = hex(HMAC-SHA256(`BILLING_WEBHOOK_SECRET`, `"{timestamp}.{corps brut}"`)), horodatage à
+  ± 5 min (anti-rejeu), comparaison à temps constant ; idempotence par `(provider, event_id)`
+  en base ; montant ≥ prix du plan × mois vérifié en base. Sans secret configuré, la fonction
+  répond `NOT_CONFIGURED` (fail-closed).
+- RPC `platform_*` : exécutables par `service_role` uniquement (révoquées pour `anon` et
+  `authenticated`, vérifié en production).
+- Logs des Edge Functions : identifiants uniquement, jamais de données personnelles ni de
+  paiement.
+
+Secrets à définir en production (jamais dans Git) :
+
+```bash
+npx supabase secrets set BILLING_WEBHOOK_SECRET=$(openssl rand -hex 32)
+npx supabase secrets set SITE_URL=https://app.jendpro.sn   # redirection des e-mails d'invitation
+```
 
 ## 8. Stratégie de tests de sécurité
 

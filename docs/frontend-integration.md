@@ -1,7 +1,7 @@
 # Guide d'intégration frontend (Flutter / React) — JËND PRO
 
 > Pour : développeurs Flutter et React qui consomment le backend Supabase.
-> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 13** (voir README pour la production).
+> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 14** (voir README pour la production).
 
 ## 1. Ce qui est prêt / ce qui arrive
 
@@ -295,6 +295,23 @@ await supabase.rpc('get_audit_log', { p_business_id: bid, p_limit: 50, p_before:
 await supabase.rpc('get_audit_log', { p_business_id: bid, p_resource_id: productId });
 await supabase.rpc('get_audit_log', { p_business_id: bid, p_action: 'sale' });  // sale.*
 ```
+
+## 6 decies. Inviter quelqu'un qui n'a pas de compte (Edge Function)
+
+```ts
+const { data, error } = await supabase.functions.invoke('invite-member', {
+  body: { business_id: bid, email: 'awa@exemple.sn', role_code: 'CASHIER', redirect_to: 'https://app.jendpro.sn/invitation' },
+});
+// data = { member_id, account_created }  — la personne reçoit un e-mail ; une fois connectée,
+// elle voit l'invitation via list_my_invitations() et l'accepte avec accept_invitation().
+```
+
+Erreurs : `PERMISSION_DENIED` (403), `ALREADY_MEMBER` (409), `ROLE_ABOVE_CALLER` (403),
+`PLAN_LIMIT_REACHED` (409), `INVALID_INPUT` (400). Pour un utilisateur qui a déjà un compte,
+la RPC `invite_member` suffit.
+
+Le paiement de l'abonnement passera par `billing-webhook` côté serveur (aucun appel depuis
+l'app) : après paiement, rafraîchir `get_subscription_status`.
 
 ## 7. Images (Storage)
 

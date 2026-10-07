@@ -51,6 +51,7 @@ document_sequences (business × type)
 | ✅ 13 | `20261007230000_subscriptions` | 11 | `subscription_plans` (+ 5 plans provisoires), `subscriptions`, essai 14 j, mode restreint (`permissions.allowed_when_restricted`), triggers de limites, RPC `get_subscription_status` |
 | ✅ 14 | `20261008090000_notifications` | 12 | `notifications`, événements par triggers (stock faible, vente importante, invitation, abonnement), `businesses.large_sale_threshold`, publication Realtime |
 | ✅ 15 | `20261008100000_audit_hardening` | 13 | `audit_logs.actor_role`, immutabilité (DELETE bloqué sauf purge plateforme), événements emplacements / clients / fournisseurs / produits, RPC `get_audit_log` |
+| ✅ 16 | `20261008110000_platform_jobs` | 14 | `billing_events` (idempotence), RPC `platform_activate_subscription` (service_role), `private.daily_maintenance` + `pg_cron` |
 | 14 | `storage` (suite) | 8→10 | Buckets privés `documents`, `invoices` + policies |
 | 15 | `analytics` | 15 | Vues / RPC de reporting, index complémentaires |
 
@@ -353,6 +354,10 @@ générale), `amount bigint > 0`, `description`, `spent_on date` (défaut aujour
 - Un seul abonnement **courant** (`TRIALING`/`ACTIVE`/`PAST_DUE`) par entreprise (index unique partiel).
 - Écriture : **`service_role` uniquement** ; toute écriture est auditée (`subscription.change`).
 - Lecture : membres de l'entreprise.
+
+**billing_events** (interne) — paiements d'abonnement traités : `(provider, event_id)` unique
+(idempotence des webhooks), `business_id`, `subscription_id`, `plan_code`, `months`, `amount`.
+RLS sans policy ni privilège : accessible uniquement côté serveur.
 
 **permissions.allowed_when_restricted** — permissions conservées en mode restreint
 (toutes les lectures, `sales.create`, `sales.credit`, `sales.discount`, `customers.create`,

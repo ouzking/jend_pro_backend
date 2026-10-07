@@ -54,6 +54,58 @@ export type Database = {
           },
         ];
       };
+      billing_events: {
+        Row: {
+          amount: number;
+          business_id: string;
+          event_id: string;
+          id: string;
+          months: number;
+          plan_code: string;
+          processed_at: string;
+          provider: string;
+          subscription_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: number;
+          business_id: string;
+          event_id: string;
+          id?: string;
+          months: number;
+          plan_code: string;
+          processed_at?: string;
+          provider: string;
+          subscription_id?: string | null;
+        };
+        Update: {
+          amount?: number;
+          business_id?: string;
+          event_id?: string;
+          id?: string;
+          months?: number;
+          plan_code?: string;
+          processed_at?: string;
+          provider?: string;
+          subscription_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "billing_events_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "billing_events_subscription_id_fkey";
+            columns: ["subscription_id"];
+            isOneToOne: false;
+            referencedRelation: "subscriptions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       business_members: {
         Row: {
           business_id: string;
@@ -1794,6 +1846,17 @@ export type Database = {
         Returns: number;
       };
       order_purchase: { Args: { p_purchase_id: string }; Returns: undefined };
+      platform_activate_subscription: {
+        Args: {
+          p_amount: number;
+          p_business_id: string;
+          p_event_id: string;
+          p_months: number;
+          p_plan_code: string;
+          p_provider: string;
+        };
+        Returns: Json;
+      };
       receive_purchase: { Args: { p_purchase_id: string }; Returns: undefined };
       record_customer_payment: {
         Args: {

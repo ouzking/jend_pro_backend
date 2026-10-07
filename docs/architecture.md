@@ -131,6 +131,28 @@ jend_pro_backend/
 > `[db.seed].sql_paths`). On utilisera `supabase/seed.sql` ou `supabase/seed/*.sql`
 > déclaré dans `config.toml` — décision prise en Phase 2.
 
+## 6 bis. Edge Functions et tâches planifiées (Phase 14)
+
+| Fonction | Auth | Rôle | Pourquoi une Edge Function |
+|---|---|---|---|
+| `invite-member` | JWT utilisateur (`verify_jwt = true`) | Inviter une personne **sans compte** : vérifie `members.manage`, crée le compte (API admin Auth), puis appelle `invite_member` **en tant qu'appelant** | L'API admin Auth exige la clé `service_role` (secret serveur) |
+| `billing-webhook` | Signature HMAC (`verify_jwt = false`) | Confirmation de paiement d'abonnement, indépendante du fournisseur → `platform_activate_subscription` | Appelé par un tiers ; secret partagé ; clé `service_role` |
+
+Code partagé : `supabase/functions/_shared/` (`http.ts` CORS + mapping des erreurs SQL → HTTP,
+`clients.ts` client « appelant » vs client admin, `signature.ts`, `validation.ts`).
+Principe : une Edge Function **n'est jamais un raccourci autour des règles** ; elle utilise le
+client de l'appelant pour toute opération métier et ne recourt à `service_role` que pour ce
+qui l'exige (API admin, RPC `platform_*`).
+
+Tâches planifiées : **`pg_cron`** en base (plus simple et plus fiable qu'une Edge Function
+planifiée pour du SQL) — `jendpro-daily-maintenance` à 06:00 UTC (= Dakar) : rappel de fin
+d'essai (J-3, une fois), passage en `EXPIRED` des abonnements échus (notifie les
+propriétaires), purge des notifications (lues > 90 j, toutes > 180 j).
+
+Évolutions prévues (non construites tant que le besoin n'est pas confirmé) : adaptateurs Wave /
+Orange Money vers `billing-webhook`, génération de factures PDF (bucket `invoices`), envoi SMS,
+résumé quotidien / IA.
+
 ## 7. Conventions
 
 ### 7.1 Nommage SQL

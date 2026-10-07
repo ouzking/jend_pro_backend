@@ -69,6 +69,13 @@ alphabétique :
 Chaque fichier de test s'exécute dans une transaction annulée (`rollback`) : aucun effet
 de bord entre les tests.
 
+Edge Functions (Deno, via `npx deno`) :
+
+```bash
+cp supabase/functions/.env.example supabase/functions/.env   # puis mettre un secret local
+bash scripts/test-functions.sh   # tests unitaires + fonctions servies localement + intégration
+```
+
 ## Lier au projet distant `jend_pro`
 
 ```bash
@@ -85,7 +92,8 @@ npx supabase db diff --linked --schema public,private   # doit afficher "No sche
 npx supabase db lint --linked --schema public,private
 ```
 
-**État de la production** (2026-10-07) : migrations des Phases 2 à 13 appliquées. Contrôles
+**État de la production** (2026-10-07) : migrations des Phases 2 à 14 appliquées ; Edge Functions
+`invite-member` et `billing-webhook` déployées (`BILLING_WEBHOOK_SECRET` à définir avant usage). Contrôles
 passés : schéma identique aux migrations, linter propre, `anon` refusé sur tables et RPC,
 schéma `private` non exposé. Le seed de démo n'est **jamais** envoyé en production.
 
@@ -117,7 +125,7 @@ Les tables sont livrées **avec** leur RLS et leurs tests dans la même phase.
 | 11 | Abonnements, essai, limites des plans, mode restreint (lecture seule + caisse) | ✅ Terminée |
 | 12 | Notifications (stock faible, vente importante, invitation, abonnement), Realtime | ✅ Terminée |
 | 13 | Audit complet et immuable, rôle de l'acteur, journal paginé | ✅ Terminée |
-| 14 | Edge Functions (webhooks paiement, documents, notifications) | ⏳ |
+| 14 | Edge Functions (`invite-member`, `billing-webhook`), activation idempotente des abonnements, tâche quotidienne `pg_cron` | ✅ Terminée |
 | 15 | Tests transverses, hardening, performance, analytics | ⏳ |
 
 ## Configuration manuelle Supabase (Dashboard)
@@ -125,3 +133,5 @@ Les tables sont livrées **avec** leur RLS et leurs tests dans la même phase.
 Liste tenue à jour au fil des phases :
 
 - _(Phase 3)_ Auth : URL du site et URLs de redirection, templates e-mail, fournisseur SMS (OTP téléphone).
+- _(Phase 14)_ Secrets Edge Functions : `BILLING_WEBHOOK_SECRET`, `SITE_URL` (voir docs/security.md §7).
+- _(Phase 14)_ `pg_cron` est activé par migration ; vérifier le job dans Dashboard → Integrations → Cron.

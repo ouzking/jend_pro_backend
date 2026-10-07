@@ -221,8 +221,15 @@ Toute erreur à n'importe quelle étape annule **tout**.
   (produits et emplacements actifs, membres actifs + invités) ; elles ne bloquent jamais la
   lecture ni la vente → `PLAN_LIMIT_REACHED` (`detail` JSON : `limit`, `max`, `current`).
   Archiver un produit libère une place.
-- Les changements d'abonnement sont faits par Edge Function (`service_role`) après
-  confirmation de paiement, et audités.
+- Les changements d'abonnement sont faits par le serveur (`billing-webhook` →
+  `platform_activate_subscription`) après confirmation de paiement, et audités
+  (`actor_role = service_role`) :
+  - un même événement de paiement n'est traité qu'une fois ;
+  - le montant doit couvrir prix du plan × nombre de mois (`AMOUNT_MISMATCH` sinon) ;
+  - renouvellement du même plan en cours : la nouvelle période **prolonge** la fin actuelle ;
+    changement de plan ou abonnement échu : la période démarre maintenant.
+- Tâche quotidienne : rappel J-3 avant fin d'essai, passage en `EXPIRED` des abonnements
+  échus (essai terminé ou période + 7 jours dépassée).
 
 ## 10. Numérotation des documents
 
