@@ -1,0 +1,7 @@
+# Normalize line endings: LF in the repository and working tree (SQL, TS, Markdown).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.pdf binary

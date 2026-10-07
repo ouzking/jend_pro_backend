@@ -86,8 +86,14 @@ explicite : `private.require_permission(p_business_id, '<permission>')`.
   `(business_id, <parent>_id)`. Il devient **physiquement impossible** de lier une
   ligne de vente de l'entreprise A à un produit de l'entreprise B, même en cas de bug
   dans une fonction `SECURITY DEFINER`.
-- **Default deny** : RLS activée et forcée sur toutes les tables `public` ; aucune
-  policy = aucun accès.
+- **Default deny**, en deux couches :
+  1. **Privilèges** : aucun droit implicite pour `anon`/`authenticated` sur les tables et
+     fonctions (default privileges révoqués dans la migration `foundation`). Chaque table
+     accorde explicitement les opérations — et si besoin les colonnes — autorisées.
+  2. **RLS** activée sur toutes les tables `public` ; aucune policy = aucun accès.
+  La RLS n'est pas `FORCE` : les fonctions `SECURITY DEFINER` (propriétaire `postgres`)
+  doivent pouvoir écrire dans les tables internes ; leur sécurité repose sur la
+  vérification explicite de permission (voir [security.md §4](security.md#4-rpc-security-definer--checklist-obligatoire)).
 
 Détails : [security.md](security.md).
 
@@ -200,3 +206,9 @@ jend_pro_backend/
 | Date | Décision | Auteur |
 |---|---|---|
 | 2026-10-07 | Architecture cible V1 (ce document) | Phase 1 |
+| 2026-10-07 | **Coûts d'achat masqués** aux rôles sans `products.read_cost` (caissier). Mécanisme précis choisi en Phase 5 | Phase 2 |
+| 2026-10-07 | **Abonnement expiré** : lecture seule, mais la caisse (ventes, règlements) reste ouverte | Phase 2 |
+| 2026-10-07 | **Images produits et logos** en lecture publique (URL non devinable) ; justificatifs et factures privés | Phase 2 |
+| 2026-10-07 | **Caissier** autorisé à vendre à crédit et à encaisser les règlements de crédit | Phase 2 |
+| 2026-10-07 | **Privilèges explicites** : default privileges révoqués pour `anon`/`authenticated` ; RLS non forcée | Phase 2 |
+| 2026-10-07 | Seed de dev : `supabase/seed.sql` (emplacement par défaut de la CLI) ; tests : `supabase/tests/database/*.sql` | Phase 2 |

@@ -107,8 +107,8 @@ Policies sur `storage.objects` basées sur `(storage.foldername(name))[1]::uuid`
 `private.has_permission(...)`. Limites de taille et types MIME définis par bucket.
 Fichiers privés servis par **URL signées** à durée courte.
 
-> Décision à confirmer : images produits et logos en lecture publique (performance, CDN,
-> données non sensibles). Si l'entreprise considère son catalogue confidentiel, passer
+> Décision (2026-10-07) : images produits et logos en lecture publique (performance, CDN,
+> données non sensibles). Si un client exige un catalogue confidentiel, passer
 > `product-images` en privé avec URL signées.
 
 ## 6. Auth

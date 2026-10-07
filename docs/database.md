@@ -248,9 +248,8 @@ Index `(user_id, read_at, created_at DESC)`. Publiée dans Realtime.
 
 ## 6. Décisions ouvertes
 
-- **Q1 — Visibilité du coût d'achat.** La RLS est par ligne, pas par colonne. Si les
-  caissiers ne doivent pas voir `cost_price` / les marges, il faut isoler le coût
-  (table `product_costs` ou vue sans coût + permission `products.read_cost`).
-  À trancher avant la Phase 5.
+- **Q1 — Visibilité du coût d'achat.** ✅ *Tranché* : les caissiers ne voient pas les
+  coûts ni les marges (permission `products.read_cost`). La RLS étant par ligne, le coût
+  sera isolé (table dédiée ou privilèges de colonnes) — mécanisme choisi en Phase 5.
 - **Q2 — TVA.** V1 : prix TTC, pas de calcul de TVA. Colonnes fiscales ajoutées si besoin
   de facturation normalisée.

@@ -1,0 +1,7 @@
+-- =============================================================================
+-- Local development seed — applied by `supabase db reset` ONLY.
+-- Never run against staging/production. Reference data required in every
+-- environment (permissions, system roles, subscription plans) belongs in
+-- migrations, not here.
+-- Demo businesses/users are added from Phase 3 onward.
+-- =============================================================================

@@ -35,6 +35,7 @@ Le client récupère ses permissions via la RPC `get_my_permissions(p_business_i
 | | `products.create` | Créer un produit |
 | | `products.update` | Modifier un produit (prix, image…) |
 | | `products.delete` | Archiver un produit |
+| | `products.read_cost` | Voir les coûts d'achat et les marges |
 | | `categories.manage` | Gérer les catégories |
 | Stock | `inventory.read` | Voir les stocks et mouvements |
 | | `inventory.adjust` | Ajustements, pertes, casse, stock initial |
@@ -78,6 +79,7 @@ Le client récupère ses permissions via la RPC `get_my_permissions(p_business_i
 | `products.create` | ✅ | ✅ | ✅ | — | ✅ |
 | `products.update` | ✅ | ✅ | ✅ | — | ✅ |
 | `products.delete` | ✅ | ✅ | ✅ | — | — |
+| `products.read_cost` | ✅ | ✅ | ✅ | — | ✅ |
 | `categories.manage` | ✅ | ✅ | ✅ | — | ✅ |
 | `inventory.read` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `inventory.adjust` | ✅ | ✅ | ✅ | — | ✅ |
@@ -105,8 +107,9 @@ Le client récupère ses permissions via la RPC `get_my_permissions(p_business_i
 | `reports.read` | ✅ | ✅ | ✅ | — | — |
 | `audit.read` | ✅ | ✅ | — | — | — |
 
-Ces valeurs par défaut sont des propositions métier : à valider avec le produit
-(notamment `sales.credit` et `customers.payments` pour le caissier).
+Le caissier peut vendre à crédit et encaisser les règlements (décision du 2026-10-07),
+mais ne voit ni les coûts ni les marges. Le STOCK_MANAGER voit les coûts car il saisit
+et réceptionne les achats.
 
 ## 4. Règles de gestion des membres
 

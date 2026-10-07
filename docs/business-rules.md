@@ -164,8 +164,8 @@ Toute erreur à n'importe quelle étape annule **tout**.
 - Les limites du plan (`max_members`, `max_products`, `max_locations`) sont vérifiées par
   triggers à l'insertion ; dépasser une limite bloque la **création**, jamais la
   **lecture** ni la vente des éléments existants.
-- Abonnement expiré : mode lecture seule + ventes autorisées *(proposition — à valider :
-  bloquer la caisse d'un commerçant est très pénalisant)*.
+- Abonnement expiré : mode lecture seule, **mais ventes et règlements de crédit restent
+  autorisés** (bloquer la caisse d'un commerçant est trop pénalisant).
 - Les changements d'abonnement sont faits par Edge Function (`service_role`) après
   confirmation de paiement, et audités.
 

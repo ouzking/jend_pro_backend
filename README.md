@@ -32,6 +32,21 @@ npx supabase db reset       # applique toutes les migrations + seed
 npx supabase test db        # exécute les tests pgTAP
 ```
 
+## Tests
+
+Les tests pgTAP sont dans `supabase/tests/database/` et s'exécutent dans l'ordre
+alphabétique :
+
+- `00000_test_helpers.sql` installe le schéma `tests` (**base locale uniquement**,
+  jamais dans une migration) : `tests.create_user`, `tests.get_user_id`,
+  `tests.authenticate_as`, `tests.authenticate_as_anon`, `tests.clear_authentication`.
+- `00100_foundation.test.sql` vérifie les invariants globaux, réévalués à chaque
+  exécution : RLS activée sur toutes les tables, aucun droit pour `anon`, `search_path`
+  fixé sur toute fonction `SECURITY DEFINER`.
+
+Chaque fichier de test s'exécute dans une transaction annulée (`rollback`) : aucun effet
+de bord entre les tests.
+
 ## Lier au projet distant `jend_pro`
 
 ```bash
@@ -56,7 +71,7 @@ Les tables sont livrées **avec** leur RLS et leurs tests dans la même phase.
 | Phase | Périmètre | Statut |
 |---|---|---|
 | 1 | Architecture, conventions, documentation | ✅ Terminée |
-| 2 | Fondations : `supabase init`, schéma `private`, privilèges par défaut, utilitaires, harnais de tests pgTAP | ⏳ |
+| 2 | Fondations : `supabase init`, schéma `private`, privilèges par défaut, utilitaires, harnais de tests pgTAP | ✅ Terminée |
 | 3 | Auth, `profiles`, `businesses`, `locations`, `business_members`, `create_business` | ⏳ |
 | 4 | RBAC (`roles`, `permissions`, `role_permissions`), helpers RLS, `audit_logs`, tests d'isolation | ⏳ |
 | 5 | Catégories, produits, Storage images | ⏳ |
