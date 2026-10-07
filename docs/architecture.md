@@ -212,3 +212,5 @@ jend_pro_backend/
 | 2026-10-07 | **Caissier** autorisé à vendre à crédit et à encaisser les règlements de crédit | Phase 2 |
 | 2026-10-07 | **Privilèges explicites** : default privileges révoqués pour `anon`/`authenticated` ; RLS non forcée | Phase 2 |
 | 2026-10-07 | Seed de dev : `supabase/seed.sql` (emplacement par défaut de la CLI) ; tests : `supabase/tests/database/*.sql` | Phase 2 |
+| 2026-10-07 | Coûts isolés dans `product_costs` (RLS `products.read_cost`) plutôt que privilèges de colonnes | Phase 5 |
+| 2026-10-07 | Colonnes « serveur » (`created_by`, `status`, `track_stock`) protégées par privilèges de colonnes : défaut `auth.uid()` + non accordées aux clients | Phase 5 |

@@ -41,7 +41,8 @@ document_sequences (business × type)
 | ✅ 03 | `20261007160100_tenancy_rbac` | 3-4 | `businesses`, `locations`, `business_members`, `permissions`, `roles`, `role_permissions`, seeds, helpers RLS, invariant dernier OWNER |
 | ✅ 04 | `20261007160200_audit` | 4 | `audit_logs`, `private.log_audit()`, audit des paramètres entreprise |
 | ✅ 05 | `20261007160300_tenancy_rpc` | 3-4 | RPC `create_business`, invitations, rôles, statuts, retrait, annuaire des membres |
-| 05 | `catalog` | 5 | `categories`, `units` (optionnel), `products` |
+| ✅ 06 | `20261007170000_catalog` | 5 | `categories`, `products`, `product_costs`, audit prix/coût, RPC `set_product_status` |
+| ✅ 07 | `20261007170100_storage_catalog` | 5 | Buckets `product-images`, `business-assets` + policies par entreprise |
 | 06 | `inventory` | 6 | `inventory`, `inventory_movements`, fonctions internes de stock, RPC `adjust_stock`, `transfer_stock` |
 | 07 | `customers` | 7 | `customers`, `customer_transactions`, RPC `record_customer_payment` |
 | 08 | `suppliers_purchases` | 8 | `suppliers`, `supplier_products`, `purchases`, `purchase_items`, RPC `create_purchase`, `receive_purchase` |
@@ -50,7 +51,7 @@ document_sequences (business × type)
 | 11 | `employees` | 10 | `employees` |
 | 12 | `subscriptions` | 11 | `subscription_plans`, `subscriptions`, triggers de limites |
 | 13 | `notifications` | 12 | `notifications`, publication Realtime |
-| 14 | `storage` | 5→10 | Buckets + policies (ajoutés au fil des besoins) |
+| 14 | `storage` (suite) | 8→10 | Buckets privés `documents`, `invoices` + policies |
 | 15 | `analytics` | 15 | Vues / RPC de reporting, index complémentaires |
 
 > `audit_logs` est avancé en Phase 4 (au lieu de 13) : les RPC des phases 5–10 doivent
@@ -134,19 +135,36 @@ Matrice détaillée : [roles-and-permissions.md](roles-and-permissions.md).
 - Aucun privilège INSERT/UPDATE/DELETE pour `authenticated` : écrit uniquement par
   `private.log_audit()` (non exécutable par les rôles API). `UPDATE` bloqué par trigger pour tous. Index `(business_id, created_at DESC)`, `(business_id, resource_type, resource_id)`.
 
-### 4.4 Catalogue (Phase 5)
+### 4.4 Catalogue (Phase 5) ✅
 
-**categories** (Tenant) — `name`, `parent_id` (FK composite, 1 niveau d'imbrication conseillé), `status`.
-`UNIQUE (business_id, lower(name))` sur les actives.
+**categories** (Tenant) — `name`, `parent_id` (FK composite `(business_id, parent_id)`),
+`status record_status`.
+- **Deux niveaux maximum** (catégorie > sous-catégorie, trigger `CATEGORY_TOO_DEEP`).
+- Nom unique (insensible à la casse) parmi les catégories actives d'un même parent.
+- CRUD direct (PostgREST) : lecture `products.read`, écriture/suppression `categories.manage`.
+  Une catégorie encore utilisée ne peut pas être supprimée (FK) : on l'archive.
 
 **products** (Tenant)
-- `category_id` (FK composite, nullable), `name`, `description`, `sku`, `barcode`,
-  `unit` (`pièce`, `kg`, `litre`… texte contrôlé), `sale_price bigint ≥ 0`,
-  `cost_price bigint ≥ 0` *(voir décision ouverte Q1)*, `track_stock bool` défaut `true`,
-  `min_stock_level numeric(14,3) ≥ 0`, `image_path`, `status record_status`, `created_by`.
-- Unicités partielles : `(business_id, sku)` et `(business_id, barcode)` quand non NULL.
-- Index : `(business_id, status, name)` pour la liste, recherche texte via
-  `pg_trgm` sur `name` *(ajouté seulement si la recherche le justifie)*.
+- `category_id` (FK composite, nullable), `name` (1-150), `description`, `sku`, `barcode`
+  (normalisés : espaces retirés, vide → NULL), `unit` (texte libre ≤ 20, défaut `pièce`),
+  `sale_price bigint ≥ 0`, `track_stock` (défaut `true`, **non modifiable** après création),
+  `allows_fractional_quantity` (défaut `false` : quantités entières uniquement),
+  `min_stock_level numeric(14,3) ≥ 0`, `image_path`, `status record_status`,
+  `created_by` (défaut `auth.uid()`, non fourni par le client).
+- `UNIQUE (business_id, sku)`, `UNIQUE (business_id, barcode)` (recherche par code-barres
+  servie par cet index).
+- `image_path` doit commencer par `{business_id}/` (contrainte `products_image_path_scope_check`).
+- Index : `(business_id, name)` (liste triée), `(business_id, category_id)` partiel (filtre + FK).
+  `pg_trgm` sur `name` sera ajouté seulement si la recherche le justifie.
+- Création/modification directes (`products.create` / `products.update`) ; pas de DELETE ;
+  archivage/réactivation via `set_product_status(product_id, status)` (`products.delete`, audité).
+- Changement de prix audité (`product.price_change`, ancien/nouveau).
+
+**product_costs** (Tenant) — `product_id` (PK, FK composite vers `products`), `cost_price bigint ≥ 0`.
+- Une ligne par produit, **créée automatiquement** (coût 0) à la création du produit.
+- Lecture : `products.read_cost` ; modification : `products.read_cost` **et** `products.update`.
+  Le caissier ne voit donc ni coûts ni marges.
+- Changement audité (`product.cost_change`). Sera recalculé par les réceptions d'achat (CMP, Phase 8).
 
 ### 4.5 Inventaire (Phase 6)
 
@@ -258,8 +276,9 @@ Index `(user_id, read_at, created_at DESC)`. Publiée dans Realtime.
 
 ## 6. Décisions ouvertes
 
-- **Q1 — Visibilité du coût d'achat.** ✅ *Tranché* : les caissiers ne voient pas les
-  coûts ni les marges (permission `products.read_cost`). La RLS étant par ligne, le coût
-  sera isolé (table dédiée ou privilèges de colonnes) — mécanisme choisi en Phase 5.
+- **Q1 — Visibilité du coût d'achat.** ✅ *Tranché et implémenté (Phase 5)* : table
+  `product_costs` protégée par `products.read_cost`. Les privilèges de colonnes ont été
+  écartés : ils s'appliquent à tout `authenticated` quel que soit le rôle métier, et cassent
+  les `select('*')` des clients. Le même principe s'appliquera au coût figé des lignes de vente.
 - **Q2 — TVA.** V1 : prix TTC, pas de calcul de TVA. Colonnes fiscales ajoutées si besoin
   de facturation normalisée.

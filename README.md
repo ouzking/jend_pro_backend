@@ -54,7 +54,8 @@ alphabétique :
   exécution : RLS activée sur toutes les tables, aucun droit pour `anon`, `search_path`
   fixé sur toute fonction `SECURITY DEFINER`.
 - `00200` profils · `00300` création d'entreprise et matrice RBAC · `00400` **isolation
-  inter-tenant** · `00500` cycle de vie des membres et anti-escalade.
+  inter-tenant** · `00500` cycle de vie des membres et anti-escalade · `00600` catalogue
+  (catégories, produits, masquage des coûts) · `00610` policies Storage.
 
 Chaque fichier de test s'exécute dans une transaction annulée (`rollback`) : aucun effet
 de bord entre les tests.
@@ -98,7 +99,7 @@ Les tables sont livrées **avec** leur RLS et leurs tests dans la même phase.
 | 2 | Fondations : `supabase init`, schéma `private`, privilèges par défaut, utilitaires, harnais de tests pgTAP | ✅ Terminée |
 | 3 | Auth, `profiles`, `businesses`, `locations`, `business_members`, `create_business` | ✅ Terminée |
 | 4 | RBAC (`roles`, `permissions`, `role_permissions`), helpers RLS, `audit_logs`, tests d'isolation | ✅ Terminée |
-| 5 | Catégories, produits, Storage images | ⏳ |
+| 5 | Catégories, produits, coûts, Storage images | ✅ Terminée |
 | 6 | Inventaire, mouvements, ajustements, transferts | ⏳ |
 | 7 | Clients, compte client, crédits, règlements | ⏳ |
 | 8 | Fournisseurs, achats, réception | ⏳ |

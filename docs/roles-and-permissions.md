@@ -33,6 +33,7 @@ Le client récupère ses permissions via la RPC `get_my_permissions(p_business_i
 | `set_member_status(business_id, user_id, status)` | `members.manage` | Suspend (`SUSPENDED`) / réactive (`ACTIVE`) |
 | `remove_member(business_id, user_id)` | `members.manage` | Retire un membre ou annule une invitation |
 | `leave_business(business_id)` | membre | Quitte l'entreprise |
+| `set_product_status(product_id, status)` | `products.delete` | Archive (`ARCHIVED`) / réactive (`ACTIVE`) un produit |
 
 Inviter une personne **sans compte** nécessite l'API admin d'Auth : ce sera une Edge Function
 (Phase 14) qui créera le compte puis appellera `invite_member`.

@@ -109,14 +109,23 @@ colonnes utilisées (`business_id`) sont en tête des index.
 
 | Bucket | Public ? | Chemin | Lecture | Écriture |
 |---|---|---|---|---|
-| `business-assets` | Lecture publique | `{business_id}/logo.*` | Tous (logos sur reçus) | `settings.manage` |
-| `product-images` | Lecture publique | `{business_id}/{product_id}/*` | Tous (URL non devinable) | `products.update` |
+| `business-assets` ✅ | Lecture publique par URL | `{business_id}/logo.*` | URL : tous ; listing API : membres | `settings.manage` |
+| `product-images` ✅ | Lecture publique par URL | `{business_id}/{product_id}/*` | URL : tous ; listing API : `products.read` | `products.update` (upload, remplacement, suppression) |
 | `documents` | **Privé** | `{business_id}/expenses/…`, `{business_id}/purchases/…` | Permission du module concerné | Idem |
 | `invoices` | **Privé** | `{business_id}/{sale_id}.pdf` | `sales.read` | Edge Function (`service_role`) |
 
-Policies sur `storage.objects` basées sur `(storage.foldername(name))[1]::uuid` →
-`private.has_permission(...)`. Limites de taille et types MIME définis par bucket.
+Policies sur `storage.objects` basées sur `private.storage_business_id(name)` (premier
+segment du chemin s'il s'agit d'un UUID, sinon NULL → aucune policy ne correspond) et
+`private.businesses_with_permission(...)`. Limites : 2 Mo (`product-images`), 1 Mo
+(`business-assets`) ; types `image/jpeg`, `image/png`, `image/webp` uniquement — **SVG
+interdit** (risque d'injection de script sur un domaine public). Les colonnes `image_path` /
+`logo_path` doivent pointer dans le dossier de l'entreprise (contraintes CHECK).
 Fichiers privés servis par **URL signées** à durée courte.
+
+Vérifié de bout en bout via l'API Storage (2026-10-07) : upload owner accepté, upload et
+suppression caissier refusés (403), SVG refusé (415), lecture publique par URL (200).
+Note de test : Storage interdit les `DELETE` SQL directs (`storage.protect_delete`) ; les tests
+pgTAP positionnent `storage.allow_delete_query` comme le fait l'API pour tester les policies.
 
 > Décision (2026-10-07) : images produits et logos en lecture publique (performance, CDN,
 > données non sensibles). Si un client exige un catalogue confidentiel, passer

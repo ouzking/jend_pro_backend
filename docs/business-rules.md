@@ -35,9 +35,15 @@
 
 - `sale_price` et `cost_price` ≥ 0. Un prix de vente inférieur au coût est **autorisé**
   (promotion) mais pourra déclencher un avertissement.
-- `sku` et `barcode` uniques par entreprise lorsqu'ils sont renseignés.
+- Le coût d'achat est stocké à part (`product_costs`) et n'est visible qu'avec `products.read_cost`.
+- `sku` et `barcode` uniques par entreprise lorsqu'ils sont renseignés (vide = non renseigné).
 - `track_stock = false` pour les services / articles non stockés : aucune ligne
-  d'inventaire, aucun contrôle de stock.
+  d'inventaire, aucun contrôle de stock. Choisi à la création, **non modifiable** ensuite
+  (changer ce mode avec du stock existant fausserait l'inventaire).
+- `allows_fractional_quantity = false` (défaut) : seules des quantités entières sont
+  acceptées en vente, achat et mouvement (téléphone, bouteille) ; `true` pour la vente au
+  kg / litre / mètre.
+- Catégories sur deux niveaux maximum.
 - Un produit référencé par de l'historique n'est **jamais supprimé** : il est archivé
   (`ARCHIVED`), n'apparaît plus à la vente, mais reste lisible dans l'historique.
 - Les lignes de vente/achat **figent** nom, prix et coût au moment de l'opération :
