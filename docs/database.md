@@ -50,6 +50,7 @@ document_sequences (business × type)
 | ✅ 12 | `20261007220000_expenses_employees` | 10 | `expense_categories` (+ défauts), `expenses` (audit complet), `employees`, bucket privé `documents` |
 | ✅ 13 | `20261007230000_subscriptions` | 11 | `subscription_plans` (+ 5 plans provisoires), `subscriptions`, essai 14 j, mode restreint (`permissions.allowed_when_restricted`), triggers de limites, RPC `get_subscription_status` |
 | ✅ 14 | `20261008090000_notifications` | 12 | `notifications`, événements par triggers (stock faible, vente importante, invitation, abonnement), `businesses.large_sale_threshold`, publication Realtime |
+| ✅ 15 | `20261008100000_audit_hardening` | 13 | `audit_logs.actor_role`, immutabilité (DELETE bloqué sauf purge plateforme), événements emplacements / clients / fournisseurs / produits, RPC `get_audit_log` |
 | 14 | `storage` (suite) | 8→10 | Buckets privés `documents`, `invoices` + policies |
 | 15 | `analytics` | 15 | Vues / RPC de reporting, index complémentaires |
 
@@ -125,14 +126,36 @@ Colonnes communes non répétées : `id uuid PK`, `created_at`, `updated_at`.
 
 Matrice détaillée : [roles-and-permissions.md](roles-and-permissions.md).
 
-### 4.3 Audit (Phase 4 ✅, enrichi Phase 13)
+### 4.3 Audit (Phases 4 et 13) ✅
 
-**audit_logs** — append-only.
-- `business_id` (nullable pour événements plateforme), `actor_id` (nullable si système),
-  `action` (`sale.cancel`, `member.role_change`…), `resource_type`, `resource_id`,
-  `metadata jsonb` (diff minimal, **sans données sensibles**), `created_at`.
-- Aucun privilège INSERT/UPDATE/DELETE pour `authenticated` : écrit uniquement par
-  `private.log_audit()` (non exécutable par les rôles API). `UPDATE` bloqué par trigger pour tous. Index `(business_id, created_at DESC)`, `(business_id, resource_type, resource_id)`.
+**audit_logs** — journal **immuable**.
+- `business_id` (nullable = plateforme), `actor_id` (NULL pour une action plateforme),
+  `actor_role` (`authenticated`, `service_role`, `postgres`), `action` (`<domaine>.<verbe>`),
+  `resource_type`, `resource_id`, `metadata jsonb` (valeurs avant/après utiles, **jamais de
+  secret**), `created_at`.
+- Écrit uniquement par `private.log_audit()` (non exécutable par les rôles API).
+- `UPDATE` interdit pour **tous** les rôles ; `DELETE` interdit pour tous sauf purge
+  plateforme explicite (`set local jendpro.allow_audit_purge = 'on'`, ex. effacement d'une
+  entreprise à sa demande).
+- Lecture : `audit.read` (OWNER, ADMIN), directement ou via `get_audit_log` (pagination par
+  curseur `(created_at, id)`, filtres action/préfixe, ressource, acteur, nom de l'acteur).
+- Index `(business_id, created_at DESC, id DESC)`, `(business_id, resource_type, resource_id)`.
+
+Catalogue des actions auditées :
+
+| Domaine | Actions |
+|---|---|
+| Entreprise | `business.create`, `business.update` (champs modifiés) |
+| Emplacements | `location.create`, `location.update`, `location.status_change` |
+| Membres | `member.invite`, `member.join`, `member.decline`, `member.role_change`, `member.status_change`, `member.remove`, `member.leave` |
+| Catalogue | `product.create`, `product.price_change`, `product.cost_change`, `product.status_change` |
+| Stock | `inventory.adjust`, `inventory.count`, `inventory.transfer` |
+| Clients | `customer.credit_limit_change`, `customer.payment`, `customer.balance_adjust`, `customer.status_change` |
+| Fournisseurs / achats | `supplier.status_change`, `purchase.receive`, `purchase.payment`, `purchase.cancel` |
+| Ventes | `sale.discount`, `sale.cancel` |
+| Dépenses | `expense.create`, `expense.update`, `expense.delete` |
+| Employés | `employee.salary_change` |
+| Abonnement | `subscription.change` |
 
 ### 4.4 Catalogue (Phase 5) ✅
 

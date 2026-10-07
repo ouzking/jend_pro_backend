@@ -63,7 +63,8 @@ alphabétique :
   (cycle, réception, coût moyen pondéré, paiements fournisseurs) · `01000` ventes (atomicité,
   idempotence, crédit, remises, annulation, visibilité caissier, invariants) · `01100` dépenses,
   employés et bucket privé `documents` · `01200` abonnements (limites, mode restreint, grâce) ·
-  `01300` notifications (événements, destinataires, accès, publication Realtime).
+  `01300` notifications (événements, destinataires, accès, publication Realtime) · `01400` audit
+  (couverture, rôle de l'acteur, immuabilité, journal paginé).
 
 Chaque fichier de test s'exécute dans une transaction annulée (`rollback`) : aucun effet
 de bord entre les tests.
@@ -84,7 +85,7 @@ npx supabase db diff --linked --schema public,private   # doit afficher "No sche
 npx supabase db lint --linked --schema public,private
 ```
 
-**État de la production** (2026-10-07) : migrations des Phases 2 à 12 appliquées. Contrôles
+**État de la production** (2026-10-07) : migrations des Phases 2 à 13 appliquées. Contrôles
 passés : schéma identique aux migrations, linter propre, `anon` refusé sur tables et RPC,
 schéma `private` non exposé. Le seed de démo n'est **jamais** envoyé en production.
 
@@ -115,7 +116,7 @@ Les tables sont livrées **avec** leur RLS et leurs tests dans la même phase.
 | 10 | Dépenses (audit complet, justificatifs privés), employés | ✅ Terminée |
 | 11 | Abonnements, essai, limites des plans, mode restreint (lecture seule + caisse) | ✅ Terminée |
 | 12 | Notifications (stock faible, vente importante, invitation, abonnement), Realtime | ✅ Terminée |
-| 13 | Audit complet | ⏳ |
+| 13 | Audit complet et immuable, rôle de l'acteur, journal paginé | ✅ Terminée |
 | 14 | Edge Functions (webhooks paiement, documents, notifications) | ⏳ |
 | 15 | Tests transverses, hardening, performance, analytics | ⏳ |
 

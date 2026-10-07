@@ -1,7 +1,7 @@
 # Guide d'intégration frontend (Flutter / React) — JËND PRO
 
 > Pour : développeurs Flutter et React qui consomment le backend Supabase.
-> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 12** (voir README pour la production).
+> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 13** (voir README pour la production).
 
 ## 1. Ce qui est prêt / ce qui arrive
 
@@ -282,6 +282,19 @@ await supabase.rpc('mark_all_notifications_read', { p_business_id: bid });
 - Seuil « vente importante » : `businesses.large_sale_threshold` (paramètres, `settings.manage`).
 - Après un changement de session, appeler `supabase.realtime.setAuth(accessToken)` si le SDK
   ne le fait pas automatiquement.
+
+## 6 nonies. Journal d'audit (OWNER / ADMIN)
+
+```ts
+// Première page, puis page suivante avec le dernier élément reçu comme curseur
+const { data: page } = await supabase.rpc('get_audit_log', { p_business_id: bid, p_limit: 50 });
+const last = page.at(-1);
+await supabase.rpc('get_audit_log', { p_business_id: bid, p_limit: 50, p_before: last.created_at, p_before_id: last.id });
+
+// Historique d'une ressource, ou d'un domaine (préfixe)
+await supabase.rpc('get_audit_log', { p_business_id: bid, p_resource_id: productId });
+await supabase.rpc('get_audit_log', { p_business_id: bid, p_action: 'sale' });  // sale.*
+```
 
 ## 7. Images (Storage)
 

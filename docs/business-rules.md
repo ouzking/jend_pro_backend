@@ -240,11 +240,16 @@ Toute erreur à n'importe quelle étape annule **tout**.
 
 ## 12. Audit — opérations obligatoirement tracées
 
-Changement de rôle / statut d'un membre · archivage produit · changement de prix ·
-ajustement / perte / casse de stock · annulation de vente · remise au-delà d'un seuil ·
-règlement de crédit · modification de plafond de crédit · réception / annulation
-d'achat · création / modification / suppression de dépense · changement d'abonnement ·
-modification des paramètres sensibles (`allow_negative_stock`, devise).
+Changement de rôle / statut d'un membre · création / archivage produit · changement de
+prix ou de coût · ajustement / perte / casse / inventaire / transfert de stock · annulation de
+vente · toute remise · règlement de crédit · reprise de solde · modification de plafond de
+crédit · archivage client / fournisseur · réception / paiement / annulation d'achat ·
+création / modification / suppression de dépense · changement de salaire · changement
+d'abonnement · création / modification d'emplacement · modification des paramètres de
+l'entreprise. Catalogue complet : [database.md §4.3](database.md#43-audit-phases-4-et-13-).
+
+Le journal est immuable (aucune modification ni suppression, y compris par les rôles
+privilégiés, hors purge plateforme explicite).
 
 ## 13. Contrat d'erreurs des RPC
 

@@ -13,6 +13,7 @@ export type Database = {
         Row: {
           action: string;
           actor_id: string | null;
+          actor_role: string | null;
           business_id: string | null;
           created_at: string;
           id: string;
@@ -24,6 +25,7 @@ export type Database = {
         Insert: {
           action: string;
           actor_id?: string | null;
+          actor_role?: string | null;
           business_id?: string | null;
           created_at?: string;
           id?: string;
@@ -34,6 +36,7 @@ export type Database = {
         Update: {
           action?: string;
           actor_id?: string | null;
+          actor_role?: string | null;
           business_id?: string | null;
           created_at?: string;
           id?: string;
@@ -1705,6 +1708,29 @@ export type Database = {
       decline_invitation: {
         Args: { p_business_id: string };
         Returns: undefined;
+      };
+      get_audit_log: {
+        Args: {
+          p_action?: string;
+          p_actor_id?: string;
+          p_before?: string;
+          p_before_id?: string;
+          p_business_id: string;
+          p_limit?: number;
+          p_resource_id?: string;
+          p_resource_type?: string;
+        };
+        Returns: {
+          action: string;
+          actor_id: string;
+          actor_name: string;
+          actor_role: string;
+          created_at: string;
+          id: string;
+          metadata: Json;
+          resource_id: string;
+          resource_type: string;
+        }[];
       };
       get_my_permissions: {
         Args: { p_business_id: string };

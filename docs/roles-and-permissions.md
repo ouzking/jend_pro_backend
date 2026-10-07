@@ -173,3 +173,4 @@ filtré, au même endroit que la vérification des rôles.
 | RPC | Permission | Effet |
 |---|---|---|
 | `get_subscription_status(business_id)` | membre actif | Plan, statut, restreint ?, limites, utilisation |
+| `get_audit_log(business_id, limit?, before?, before_id?, action?, resource_type?, resource_id?, actor_id?)` | `audit.read` | Journal d'audit paginé avec nom de l'acteur |
