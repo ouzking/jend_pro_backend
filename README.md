@@ -4,7 +4,7 @@ Backend du SaaS **JËND PRO** (gestion intelligente pour commerces et PME — S�
 puis Afrique de l'Ouest), construit sur **Supabase** (PostgreSQL, Auth, RLS, Storage,
 Realtime, Edge Functions).
 
-- Projet Supabase cible : **`jend_pro`**
+- Projet Supabase cible : **`jend_pro`** (ref `lmyhrksehcodyylzphyn`, région `eu-west-1`, PostgreSQL 17)
 - Dépôt : https://github.com/ouzking/jend_pro_backend
 
 ## Documentation
@@ -63,9 +63,21 @@ de bord entre les tests.
 
 ```bash
 npx supabase login
-npx supabase link --project-ref <PROJECT_REF>   # ref visible dans l'URL du Dashboard
+npx supabase link --project-ref lmyhrksehcodyylzphyn
 npx supabase db push                             # applique les migrations versionnées
 ```
+
+Vérifications après chaque déploiement :
+
+```bash
+npx supabase migration list            # local et distant alignés
+npx supabase db diff --linked --schema public,private   # doit afficher "No schema changes found"
+npx supabase db lint --linked --schema public,private
+```
+
+**État de la production** (2026-10-07) : migrations des Phases 2 à 4 appliquées. Contrôles
+passés : schéma identique aux migrations, linter propre, `anon` refusé sur tables et RPC,
+schéma `private` non exposé. Le seed de démo n'est **jamais** envoyé en production.
 
 > Ne jamais modifier le schéma via le Dashboard. Toute évolution passe par
 > `npx supabase migration new <nom>`.
