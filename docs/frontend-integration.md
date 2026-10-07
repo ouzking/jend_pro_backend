@@ -1,7 +1,7 @@
 # Guide d'intégration frontend (Flutter / React) — JËND PRO
 
 > Pour : développeurs Flutter et React qui consomment le backend Supabase.
-> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 10** (voir README pour la production).
+> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 11** (voir README pour la production).
 
 ## 1. Ce qui est prêt / ce qui arrive
 
@@ -16,7 +16,8 @@
 | Fournisseurs, achats | ✅ Prêt | Tables `suppliers`, `supplier_products` ; lecture `purchases`, `purchase_items`, vue `supplier_balances` ; RPC d'achat |
 | **Ventes, paiements (caisse)** | ✅ Prêt | RPC `create_sale` (atomique, idempotente), `cancel_sale` ; lecture `sales`, `sale_items`, `payments` |
 | Dépenses, employés | ✅ Prêt | Tables `expense_categories`, `expenses`, `employees` ; justificatifs dans le bucket privé `documents` |
-| Abonnements, notifications | ⏳ Phases 11-12 | — |
+| Abonnements | ✅ Lecture | RPC `get_subscription_status`, tables `subscription_plans`, `subscriptions` (le paiement viendra en Phase 14) |
+| Notifications | ⏳ Phase 12 | — |
 
 Règle d'or : **le frontend n'est jamais une couche de sécurité ni la source de vérité des
 calculs**. Il affiche, saisit et appelle l'API ; la base décide (RLS, RPC).
@@ -245,6 +246,19 @@ await supabase.from('expenses').insert({ business_id: bid, category_id: loyer, a
 // Affichage du justificatif : URL signée courte (jamais d'URL publique)
 const { data } = await supabase.storage.from('documents').createSignedUrl(path, 60);
 ```
+
+## 6 septies. Abonnement et mode restreint
+
+```ts
+const { data: [sub] } = await supabase.rpc('get_subscription_status', { p_business_id: bid });
+// sub.plan_code, sub.status, sub.trial_ends_at, sub.is_restricted, sub.limits, sub.usage
+```
+
+- Afficher un bandeau si `is_restricted` (essai terminé / impayé) : l'app passe en lecture
+  seule **sauf la caisse**. `get_my_permissions` renvoie déjà l'ensemble effectif : il suffit
+  de rafraîchir les permissions pour griser les bons boutons.
+- `PLAN_LIMIT_REACHED` (`detail` : `limit`, `max`, `current`) → proposer de changer de plan.
+- Afficher `usage` / `limits` sur l'écran d'abonnement (membres, produits, emplacements).
 
 ## 7. Images (Storage)
 

@@ -48,7 +48,7 @@ document_sequences (business × type)
 | ✅ 10 | `20261007200000_suppliers_purchases` | 8 | `document_sequences`, `suppliers`, `supplier_products`, `purchases`, `purchase_items`, `payments.purchase_id`, vue `supplier_balances`, RPC `save_purchase`, `order_purchase`, `receive_purchase`, `cancel_purchase`, `record_purchase_payment` |
 | ✅ 11 | `20261007210000_sales` | 9 | `sales`, `sale_items`, `sale_item_costs`, `payments.sale_id`, `customer_transactions.sale_id`, RPC `create_sale`, `cancel_sale` |
 | ✅ 12 | `20261007220000_expenses_employees` | 10 | `expense_categories` (+ défauts), `expenses` (audit complet), `employees`, bucket privé `documents` |
-| 12 | `subscriptions` | 11 | `subscription_plans`, `subscriptions`, triggers de limites |
+| ✅ 13 | `20261007230000_subscriptions` | 11 | `subscription_plans` (+ 5 plans provisoires), `subscriptions`, essai 14 j, mode restreint (`permissions.allowed_when_restricted`), triggers de limites, RPC `get_subscription_status` |
 | 13 | `notifications` | 12 | `notifications`, publication Realtime |
 | 14 | `storage` (suite) | 8→10 | Buckets privés `documents`, `invoices` + policies |
 | 15 | `analytics` | 15 | Vues / RPC de reporting, index complémentaires |
@@ -71,7 +71,7 @@ document_sequences (business × type)
 | `payment_method` ✅ | `CASH`, `WAVE`, `ORANGE_MONEY`, `FREE_MONEY`, `CARD`, `BANK_TRANSFER`, `CHEQUE`, `OTHER` |
 | `payment_direction` ✅ | `IN` (encaissement), `OUT` (décaissement) |
 | `customer_transaction_type` ✅ | `CREDIT_SALE`, `PAYMENT`, `ADJUSTMENT`, `SALE_CANCELLATION` |
-| `subscription_status` | `TRIALING`, `ACTIVE`, `PAST_DUE`, `CANCELLED`, `EXPIRED` |
+| `subscription_status` ✅ | `TRIALING`, `ACTIVE`, `PAST_DUE`, `CANCELLED`, `EXPIRED` |
 
 `TRANSFER` est scindé en `TRANSFER_OUT` / `TRANSFER_IN` : un transfert = deux mouvements
 liés par `transfer_id`, chacun avec une quantité signée cohérente.
@@ -309,16 +309,31 @@ générale), `amount bigint > 0`, `description`, `spent_on date` (défaut aujour
 - Lecture `employees.read` (salaires inclus) ; création/modification `employees.manage` ;
   jamais supprimés (archivage). Changement de salaire audité.
 
-### 4.10 Abonnements (Phase 11)
+### 4.10 Abonnements (Phase 11) ✅
 
-**subscription_plans** (global) — `code` (`FREE`, `STARTER`, `PRO`, `BUSINESS`, `ENTERPRISE`),
-`name`, `price_amount bigint`, `currency_code`, `billing_period` (`MONTHLY`/`YEARLY`),
-`limits jsonb` (`max_members`, `max_products`, `max_locations`…), `features jsonb`, `is_public`.
+**subscription_plans** (global, migrations uniquement) — `code` unique, `name`, `description`,
+`price_amount`, `currency_code`, `billing_period` (`MONTHLY` | `YEARLY`), `limits jsonb`
+(`max_members`, `max_products`, `max_locations` ; `null` = illimité), `features jsonb`,
+`is_public`, `sort_order`. Lisibles par tout utilisateur connecté.
 
-**subscriptions** (Tenant) — `plan_id`, `status subscription_status`,
-`current_period_start`, `current_period_end`, `trial_ends_at`, `cancelled_at`,
-`external_reference`. Index unique partiel : un abonnement non terminé par entreprise.
-Écriture : `service_role` uniquement.
+| Plan (provisoire) | Prix / mois | Membres | Produits actifs | Emplacements |
+|---|---|---|---|---|
+| FREE | 0 | 2 | 100 | 1 |
+| STARTER | 5 000 | 3 | 500 | 1 |
+| PRO (essai) | 10 000 | 10 | 5 000 | 3 |
+| BUSINESS | 25 000 | 30 | illimité | 10 |
+| ENTERPRISE (non public) | sur devis | illimité | illimité | illimité |
+
+**subscriptions** (Tenant) — historique : `plan_id`, `status`, `trial_ends_at`,
+`current_period_start`, `current_period_end` (NULL = sans fin), `cancel_at_period_end`,
+`ended_at` (renseigné ⇔ `CANCELLED`/`EXPIRED`), `external_reference`.
+- Un seul abonnement **courant** (`TRIALING`/`ACTIVE`/`PAST_DUE`) par entreprise (index unique partiel).
+- Écriture : **`service_role` uniquement** ; toute écriture est auditée (`subscription.change`).
+- Lecture : membres de l'entreprise.
+
+**permissions.allowed_when_restricted** — permissions conservées en mode restreint
+(toutes les lectures, `sales.create`, `sales.credit`, `sales.discount`, `customers.create`,
+`customers.payments`, `subscription.manage`).
 
 ### 4.11 Notifications (Phase 12)
 

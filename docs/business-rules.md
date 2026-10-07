@@ -205,13 +205,19 @@ Toute erreur à n'importe quelle étape annule **tout**.
 
 ## 9. Abonnements
 
-- Une entreprise a **au plus un abonnement non terminé** à la fois.
-- À la création d'une entreprise : abonnement `TRIALING` (plan et durée à définir).
-- Les limites du plan (`max_members`, `max_products`, `max_locations`) sont vérifiées par
-  triggers à l'insertion ; dépasser une limite bloque la **création**, jamais la
-  **lecture** ni la vente des éléments existants.
-- Abonnement expiré : mode lecture seule, **mais ventes et règlements de crédit restent
-  autorisés** (bloquer la caisse d'un commerçant est trop pénalisant).
+- Une entreprise a **au plus un abonnement courant** à la fois (historique conservé).
+- À la création d'une entreprise : essai **PRO de 14 jours** (`TRIALING`).
+- **Bonne situation** (calculée à partir des dates, sans tâche planifiée) :
+  essai non terminé, ou `ACTIVE`/`PAST_DUE` dont la période n'est pas terminée depuis plus de
+  **7 jours** (délai de grâce), ou période sans fin (plan gratuit).
+- Hors bonne situation → **mode restreint** : lecture seule, **mais la caisse reste ouverte**
+  (ventes, ventes à crédit, remises, création de clients, règlements de crédit) et le paiement
+  de l'abonnement reste possible. Appliqué dans `private.businesses_with_permission` : toutes
+  les policies et RPC en héritent ; `get_my_permissions` reflète l'état pour l'UI.
+- Limites du plan vérifiées par triggers à la **création** et à la **réactivation**
+  (produits et emplacements actifs, membres actifs + invités) ; elles ne bloquent jamais la
+  lecture ni la vente → `PLAN_LIMIT_REACHED` (`detail` JSON : `limit`, `max`, `current`).
+  Archiver un produit libère une place.
 - Les changements d'abonnement sont faits par Edge Function (`service_role`) après
   confirmation de paiement, et audités.
 
@@ -263,6 +269,7 @@ traduit pour l'utilisateur) ; `detail` apporte un complément non contractuel.
 | `P0001` | `INVALID_PURCHASE_STATUS`, `PURCHASE_NOT_EDITABLE`, `PURCHASE_HAS_PAYMENTS`, `TOTAL_BELOW_AMOUNT_PAID` | Règle d'achat |
 | `P0002` | `SUPPLIER_NOT_FOUND`, `PURCHASE_NOT_FOUND` | Ressource absente de l'entreprise |
 | `22023` | `CLIENT_REFERENCE_REQUIRED`, `INVALID_PAYMENT`, `PAYMENT_EXCEEDS_TOTAL` | Vente invalide |
+| `P0001` | `PLAN_LIMIT_REACHED` (`detail` JSON) | Limite du plan atteinte |
 | `P0001` | `PRODUCT_ARCHIVED`, `CUSTOMER_REQUIRED_FOR_CREDIT`, `SALE_ALREADY_CANCELLED` | Règle de vente |
 | `23514` / `23505` | (PostgreSQL) | Contrainte `CHECK` / unicité violée |
 

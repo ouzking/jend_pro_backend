@@ -163,3 +163,13 @@ l'appelant.** Les règles 2 et 3 en découlent (l'ADMIN n'a pas `subscription.ma
 Les permissions disent **qui** peut faire une action ; les **limites du plan** disent
 **combien** (membres, produits, emplacements). Les deux sont vérifiées côté base, de
 façon indépendante (voir [business-rules.md §9](business-rules.md#9-abonnements)).
+
+En **mode restreint** (abonnement hors bonne situation), seules les permissions marquées
+`allowed_when_restricted` restent effectives : toutes les lectures, `sales.create`,
+`sales.credit`, `sales.discount`, `customers.create`, `customers.payments`,
+`subscription.manage`. Le rôle du membre ne change pas : c'est l'ensemble effectif qui est
+filtré, au même endroit que la vérification des rôles.
+
+| RPC | Permission | Effet |
+|---|---|---|
+| `get_subscription_status(business_id)` | membre actif | Plan, statut, restreint ?, limites, utilisation |

@@ -778,6 +778,7 @@ export type Database = {
       };
       permissions: {
         Row: {
+          allowed_when_restricted: boolean;
           code: string;
           created_at: string;
           description: string;
@@ -785,12 +786,14 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          allowed_when_restricted?: boolean;
           code: string;
           created_at?: string;
           description: string;
           module: string;
         };
         Update: {
+          allowed_when_restricted?: boolean;
           code?: string;
           created_at?: string;
           description?: string;
@@ -1338,6 +1341,116 @@ export type Database = {
           },
         ];
       };
+      subscription_plans: {
+        Row: {
+          billing_period: Database["public"]["Enums"]["billing_period"];
+          code: string;
+          created_at: string;
+          currency_code: string;
+          description: string | null;
+          features: NonNullable<Json>;
+          id: string;
+          is_public: boolean;
+          limits: NonNullable<Json>;
+          name: string;
+          price_amount: number;
+          sort_order: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          billing_period?: Database["public"]["Enums"]["billing_period"];
+          code: string;
+          created_at?: string;
+          currency_code?: string;
+          description?: string | null;
+          features?: NonNullable<Json>;
+          id?: string;
+          is_public?: boolean;
+          limits?: NonNullable<Json>;
+          name: string;
+          price_amount?: number;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          billing_period?: Database["public"]["Enums"]["billing_period"];
+          code?: string;
+          created_at?: string;
+          currency_code?: string;
+          description?: string | null;
+          features?: NonNullable<Json>;
+          id?: string;
+          is_public?: boolean;
+          limits?: NonNullable<Json>;
+          name?: string;
+          price_amount?: number;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      subscriptions: {
+        Row: {
+          business_id: string;
+          cancel_at_period_end: boolean;
+          created_at: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          ended_at: string | null;
+          external_reference: string | null;
+          id: string;
+          plan_id: string;
+          status: Database["public"]["Enums"]["subscription_status"];
+          trial_ends_at: string | null;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          cancel_at_period_end?: boolean;
+          created_at?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          ended_at?: string | null;
+          external_reference?: string | null;
+          id?: string;
+          plan_id: string;
+          status: Database["public"]["Enums"]["subscription_status"];
+          trial_ends_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          business_id?: string;
+          cancel_at_period_end?: boolean;
+          created_at?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          ended_at?: string | null;
+          external_reference?: string | null;
+          id?: string;
+          plan_id?: string;
+          status?: Database["public"]["Enums"]["subscription_status"];
+          trial_ends_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey";
+            columns: ["plan_id"];
+            isOneToOne: false;
+            referencedRelation: "subscription_plans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       supplier_products: {
         Row: {
           business_id: string;
@@ -1543,6 +1656,19 @@ export type Database = {
         Args: { p_business_id: string };
         Returns: string[];
       };
+      get_subscription_status: {
+        Args: { p_business_id: string };
+        Returns: {
+          current_period_end: string;
+          is_restricted: boolean;
+          limits: Json;
+          plan_code: string;
+          plan_name: string;
+          status: Database["public"]["Enums"]["subscription_status"];
+          trial_ends_at: string;
+          usage: Json;
+        }[];
+      };
       invite_member: {
         Args: { p_business_id: string; p_email: string; p_role_code: string };
         Returns: string;
@@ -1656,6 +1782,7 @@ export type Database = {
       };
     };
     Enums: {
+      billing_period: "MONTHLY" | "YEARLY";
       business_status: "ACTIVE" | "SUSPENDED";
       customer_transaction_type:
         "CREDIT_SALE" | "PAYMENT" | "ADJUSTMENT" | "SALE_CANCELLATION";
@@ -1686,6 +1813,8 @@ export type Database = {
       purchase_status: "DRAFT" | "ORDERED" | "RECEIVED" | "CANCELLED";
       record_status: "ACTIVE" | "ARCHIVED";
       sale_status: "COMPLETED" | "CANCELLED";
+      subscription_status:
+        "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELLED" | "EXPIRED";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1813,6 +1942,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      billing_period: ["MONTHLY", "YEARLY"],
       business_status: ["ACTIVE", "SUSPENDED"],
       customer_transaction_type: [
         "CREDIT_SALE",
@@ -1849,6 +1979,13 @@ export const Constants = {
       purchase_status: ["DRAFT", "ORDERED", "RECEIVED", "CANCELLED"],
       record_status: ["ACTIVE", "ARCHIVED"],
       sale_status: ["COMPLETED", "CANCELLED"],
+      subscription_status: [
+        "TRIALING",
+        "ACTIVE",
+        "PAST_DUE",
+        "CANCELLED",
+        "EXPIRED",
+      ],
     },
   },
 } as const;
