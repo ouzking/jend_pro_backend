@@ -63,15 +63,28 @@
 
 | Type | Signe | Origine | Permission |
 |---|---|---|---|
-| `INITIAL` | + | Saisie du stock d'ouverture d'un produit | `inventory.adjust` |
+| `INITIAL` | + | Stock d'ouverture — **une seule fois** par produit × emplacement | `inventory.adjust` |
 | `PURCHASE` | + | Réception d'un achat | `purchases.receive` |
 | `SALE` | − | Vente | `sales.create` |
 | `SALE_CANCELLATION` | + | Annulation d'une vente | `sales.cancel` |
 | `RETURN` | + | Retour client (partiel) | `sales.cancel` |
-| `ADJUSTMENT` | ± | Inventaire physique / correction (motif obligatoire) | `inventory.adjust` |
+| `ADJUSTMENT` | ± | Correction manuelle ou inventaire physique (`count_stock`) — motif obligatoire | `inventory.adjust` |
 | `TRANSFER_OUT` / `TRANSFER_IN` | − / + | Transfert entre emplacements (paire liée par `transfer_id`) | `inventory.transfer` |
 | `LOSS` | − | Perte, vol | `inventory.adjust` |
 | `DAMAGE` | − | Casse, péremption | `inventory.adjust` |
+
+Opérations disponibles (Phase 6) :
+- `adjust_stock(business, product, location, type, quantity, reason)` : `quantity` est le
+  **delta signé** (`LOSS -3` = perte de 3). Types acceptés : `INITIAL`, `ADJUSTMENT`, `LOSS`, `DAMAGE`.
+- `count_stock(business, product, location, counted, reason?)` : inventaire physique ; le
+  serveur calcule l'écart **sous verrou** (une vente simultanée n'est jamais perdue).
+- `transfer_stock(business, product, from, to, quantity, reason?)` : paire
+  `TRANSFER_OUT` / `TRANSFER_IN`, tout ou rien.
+- Les mouvements `PURCHASE`, `SALE`, `SALE_CANCELLATION`, `RETURN` ne sont **jamais** saisis
+  manuellement : ils sont produits par les achats et les ventes.
+- Produits `allows_fractional_quantity = false` : quantités entières uniquement ; produits
+  `track_stock = false` : aucun mouvement possible.
+- Aucun mouvement sur un emplacement archivé ; on n'archive pas un emplacement qui a du stock.
 
 ### 3.3 Stock négatif
 - **Interdit par défaut.** Une vente ou sortie qui rendrait le stock négatif échoue
@@ -214,7 +227,10 @@ traduit pour l'utilisateur) ; `detail` apporte un complément non contractuel.
 | `P0001` | `ROLE_NOT_IN_BUSINESS` | Rôle personnalisé d'une autre entreprise |
 | `P0001` | `APPEND_ONLY` | Modification d'une table en ajout seul |
 | `P0002` | `USER_NOT_FOUND`, `MEMBER_NOT_FOUND`, `ROLE_NOT_FOUND`, `INVITATION_NOT_FOUND` | Ressource introuvable |
-| `22023` | `INVALID_TIMEZONE`, `INVALID_STATUS` | Paramètre invalide |
+| `22023` | `INVALID_TIMEZONE`, `INVALID_STATUS`, `INVALID_QUANTITY`, `INVALID_QUANTITY_SIGN`, `INVALID_MOVEMENT_TYPE`, `REASON_REQUIRED`, `SAME_LOCATION` | Paramètre invalide |
+| `P0001` | `INSUFFICIENT_STOCK` (`detail` JSON : `product_id`, `location_id`, `available`, `requested`) | Stock insuffisant |
+| `P0001` | `INITIAL_ALREADY_SET`, `PRODUCT_NOT_STOCKED`, `FRACTIONAL_QUANTITY_NOT_ALLOWED`, `LOCATION_ARCHIVED`, `LOCATION_HAS_STOCK`, `CATEGORY_TOO_DEEP` | Règle de stock / catalogue |
+| `P0002` | `PRODUCT_NOT_FOUND`, `LOCATION_NOT_FOUND` | Produit / emplacement absent de l'entreprise |
 | `23514` / `23505` | (PostgreSQL) | Contrainte `CHECK` / unicité violée |
 
 PostgREST renvoie `42501` en HTTP 401 (anonyme) ou 403 (connecté), les autres en 400/404/409.

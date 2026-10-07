@@ -213,6 +213,113 @@ export type Database = {
           },
         ];
       };
+      inventory: {
+        Row: {
+          business_id: string;
+          location_id: string;
+          product_id: string;
+          quantity: number;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          location_id: string;
+          product_id: string;
+          quantity?: number;
+          updated_at?: string;
+        };
+        Update: {
+          business_id?: string;
+          location_id?: string;
+          product_id?: string;
+          quantity?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inventory_location_fkey";
+            columns: ["business_id", "location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "inventory_product_fkey";
+            columns: ["business_id", "product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
+      inventory_movements: {
+        Row: {
+          business_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          location_id: string;
+          product_id: string;
+          quantity: number;
+          quantity_after: number;
+          reason: string | null;
+          reference_id: string | null;
+          reference_type: string | null;
+          transfer_id: string | null;
+          type: Database["public"]["Enums"]["inventory_movement_type"];
+          unit_cost: number | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          business_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          location_id: string;
+          product_id: string;
+          quantity: number;
+          quantity_after: number;
+          reason?: string | null;
+          reference_id?: string | null;
+          reference_type?: string | null;
+          transfer_id?: string | null;
+          type: Database["public"]["Enums"]["inventory_movement_type"];
+          unit_cost?: number | null;
+        };
+        Update: {
+          business_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          location_id?: string;
+          product_id?: string;
+          quantity?: number;
+          quantity_after?: number;
+          reason?: string | null;
+          reference_id?: string | null;
+          reference_type?: string | null;
+          transfer_id?: string | null;
+          type?: Database["public"]["Enums"]["inventory_movement_type"];
+          unit_cost?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_location_fkey";
+            columns: ["business_id", "location_id"];
+            isOneToOne: false;
+            referencedRelation: "locations";
+            referencedColumns: ["business_id", "id"];
+          },
+          {
+            foreignKeyName: "inventory_movements_product_fkey";
+            columns: ["business_id", "product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["business_id", "id"];
+          },
+        ];
+      };
       locations: {
         Row: {
           address: string | null;
@@ -505,9 +612,30 @@ export type Database = {
         Args: { p_business_id: string };
         Returns: undefined;
       };
+      adjust_stock: {
+        Args: {
+          p_business_id: string;
+          p_location_id: string;
+          p_product_id: string;
+          p_quantity: number;
+          p_reason?: string;
+          p_type: Database["public"]["Enums"]["inventory_movement_type"];
+        };
+        Returns: string;
+      };
       change_member_role: {
         Args: { p_business_id: string; p_role_code: string; p_user_id: string };
         Returns: undefined;
+      };
+      count_stock: {
+        Args: {
+          p_business_id: string;
+          p_counted_quantity: number;
+          p_location_id: string;
+          p_product_id: string;
+          p_reason?: string;
+        };
+        Returns: string;
       };
       create_business: {
         Args: {
@@ -545,6 +673,17 @@ export type Database = {
           user_id: string;
         }[];
       };
+      list_low_stock: {
+        Args: { p_business_id: string; p_location_id?: string };
+        Returns: {
+          location_id: string;
+          location_name: string;
+          min_stock_level: number;
+          product_id: string;
+          product_name: string;
+          quantity: number;
+        }[];
+      };
       list_my_invitations: {
         Args: Record<PropertyKey, never>;
         Returns: {
@@ -574,9 +713,31 @@ export type Database = {
         };
         Returns: undefined;
       };
+      transfer_stock: {
+        Args: {
+          p_business_id: string;
+          p_from_location_id: string;
+          p_product_id: string;
+          p_quantity: number;
+          p_reason?: string;
+          p_to_location_id: string;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       business_status: "ACTIVE" | "SUSPENDED";
+      inventory_movement_type:
+        | "INITIAL"
+        | "PURCHASE"
+        | "SALE"
+        | "SALE_CANCELLATION"
+        | "RETURN"
+        | "ADJUSTMENT"
+        | "TRANSFER_OUT"
+        | "TRANSFER_IN"
+        | "LOSS"
+        | "DAMAGE";
       location_type: "STORE" | "WAREHOUSE";
       member_status: "INVITED" | "ACTIVE" | "SUSPENDED";
       record_status: "ACTIVE" | "ARCHIVED";
@@ -708,6 +869,18 @@ export const Constants = {
   public: {
     Enums: {
       business_status: ["ACTIVE", "SUSPENDED"],
+      inventory_movement_type: [
+        "INITIAL",
+        "PURCHASE",
+        "SALE",
+        "SALE_CANCELLATION",
+        "RETURN",
+        "ADJUSTMENT",
+        "TRANSFER_OUT",
+        "TRANSFER_IN",
+        "LOSS",
+        "DAMAGE",
+      ],
       location_type: ["STORE", "WAREHOUSE"],
       member_status: ["INVITED", "ACTIVE", "SUSPENDED"],
       record_status: ["ACTIVE", "ARCHIVED"],

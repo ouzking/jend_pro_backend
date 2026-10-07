@@ -145,6 +145,9 @@ jend_pro_backend/
   suffixe explicite si ambigu (`unit_price`, `total_amount`). **Jamais de float.**
 - Quantités : `numeric(14,3)` (vente au kilo/litre possible).
 - Contraintes nommées : `<table>_<colonne>_check`, `<table>_<cols>_key`, `<table>_<col>_fkey`.
+  **Attention** : PostgreSQL nomme déjà `<table>_<colonne>_check` les CHECK déclarés sur la
+  colonne ; une contrainte de table explicite sur la même colonne doit avoir un suffixe
+  distinct (`_scope_check`, `_required_check`, `_sign_check`…).
 - Index : `<table>_<cols>_idx`.
 - Policies RLS : phrase lisible, ex. `"members with products.read can select"`.
 - Fonctions RPC : verbe + objet (`create_sale`, `cancel_sale`, `adjust_stock`).

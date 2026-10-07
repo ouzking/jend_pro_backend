@@ -34,6 +34,10 @@ Le client récupère ses permissions via la RPC `get_my_permissions(p_business_i
 | `remove_member(business_id, user_id)` | `members.manage` | Retire un membre ou annule une invitation |
 | `leave_business(business_id)` | membre | Quitte l'entreprise |
 | `set_product_status(product_id, status)` | `products.delete` | Archive (`ARCHIVED`) / réactive (`ACTIVE`) un produit |
+| `adjust_stock(business_id, product_id, location_id, type, quantity, reason?)` | `inventory.adjust` | Stock initial, ajustement, perte, casse |
+| `count_stock(business_id, product_id, location_id, counted, reason?)` | `inventory.adjust` | Inventaire physique |
+| `transfer_stock(business_id, product_id, from_id, to_id, quantity, reason?)` | `inventory.transfer` | Transfert entre emplacements |
+| `list_low_stock(business_id, location_id?)` | `inventory.read` | Produits sous le seuil minimal |
 
 Inviter une personne **sans compte** nécessite l'API admin d'Auth : ce sera une Edge Function
 (Phase 14) qui créera le compte puis appellera `invite_member`.

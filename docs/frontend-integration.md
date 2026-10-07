@@ -1,7 +1,7 @@
 # Guide d'intégration frontend (Flutter / React) — JËND PRO
 
 > Pour : développeurs Flutter et React qui consomment le backend Supabase.
-> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 5 en production**.
+> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 6** (voir README pour la production).
 
 ## 1. Ce qui est prêt / ce qui arrive
 
@@ -11,7 +11,7 @@
 | Entreprises, emplacements, choix de l'entreprise active | ✅ Prêt | `businesses`, `locations`, RPC `create_business` |
 | Membres, invitations, rôles, permissions | ✅ Prêt | RPC `invite_member`, `get_my_permissions`… |
 | Catégories, produits, coûts, images produits, logo | ✅ Prêt | Tables `categories`, `products`, `product_costs` + Storage |
-| Stock / inventaire | ⏳ Phase 6 | Écrans possibles avec données fictives ; **ne pas** gérer le stock côté client |
+| Stock / inventaire | ✅ Prêt | Lecture `inventory`, `inventory_movements` ; RPC `adjust_stock`, `count_stock`, `transfer_stock`, `list_low_stock` |
 | Clients et crédits | ⏳ Phase 7 | idem |
 | Fournisseurs, achats | ⏳ Phase 8 | idem |
 | **Ventes, paiements (caisse)** | ⏳ Phase 9 | Une RPC `create_sale` atomique sera fournie : ne rien calculer « en vrai » côté client |
@@ -116,6 +116,35 @@ await supabase.rpc('set_product_status', { p_product_id: p.id, p_status: 'ARCHIV
 
 Champs **non modifiables** après création : `business_id`, `track_stock`, `created_by`
 (`status` via la RPC uniquement). Catégories : 2 niveaux maximum.
+
+## 6 bis. Stock
+
+```ts
+// Stock d'un emplacement, avec le produit
+await supabase.from('inventory')
+  .select('quantity, product:products(id, name, unit, min_stock_level)')
+  .eq('business_id', bid).eq('location_id', locationId);
+
+// Historique d'un produit (pagination)
+await supabase.from('inventory_movements')
+  .select('type, quantity, quantity_after, reason, created_at, location_id')
+  .eq('business_id', bid).eq('product_id', productId)
+  .order('created_at', { ascending: false }).range(0, 49);
+
+// Stock d'ouverture, perte (delta NÉGATIF), inventaire physique, transfert
+await supabase.rpc('adjust_stock', { p_business_id: bid, p_product_id: pid, p_location_id: loc, p_type: 'INITIAL', p_quantity: 50 });
+await supabase.rpc('adjust_stock', { p_business_id: bid, p_product_id: pid, p_location_id: loc, p_type: 'LOSS', p_quantity: -3, p_reason: 'Sac percé' });
+await supabase.rpc('count_stock', { p_business_id: bid, p_product_id: pid, p_location_id: loc, p_counted_quantity: 42 });
+await supabase.rpc('transfer_stock', { p_business_id: bid, p_product_id: pid, p_from_location_id: a, p_to_location_id: b, p_quantity: 10 });
+
+// Alertes de stock faible (tableau de bord)
+await supabase.rpc('list_low_stock', { p_business_id: bid });
+```
+
+- **Jamais** d'écriture directe dans `inventory` / `inventory_movements` (refusé).
+- Inventaire physique : envoyer la quantité **comptée** via `count_stock`, pas un delta
+  calculé côté client (le stock peut changer pendant le comptage).
+- `INSUFFICIENT_STOCK` : `detail` contient `available` et `requested` (JSON) pour l'affichage.
 
 ## 7. Images (Storage)
 

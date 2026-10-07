@@ -43,7 +43,7 @@ document_sequences (business × type)
 | ✅ 05 | `20261007160300_tenancy_rpc` | 3-4 | RPC `create_business`, invitations, rôles, statuts, retrait, annuaire des membres |
 | ✅ 06 | `20261007170000_catalog` | 5 | `categories`, `products`, `product_costs`, audit prix/coût, RPC `set_product_status` |
 | ✅ 07 | `20261007170100_storage_catalog` | 5 | Buckets `product-images`, `business-assets` + policies par entreprise |
-| 06 | `inventory` | 6 | `inventory`, `inventory_movements`, fonctions internes de stock, RPC `adjust_stock`, `transfer_stock` |
+| ✅ 08 | `20261007180000_inventory` | 6 | `inventory`, `inventory_movements`, moteur `private.apply_stock_movement`, RPC `adjust_stock`, `count_stock`, `transfer_stock`, `list_low_stock` |
 | 07 | `customers` | 7 | `customers`, `customer_transactions`, RPC `record_customer_payment` |
 | 08 | `suppliers_purchases` | 8 | `suppliers`, `supplier_products`, `purchases`, `purchase_items`, RPC `create_purchase`, `receive_purchase` |
 | 09 | `sales_payments` | 9 | `document_sequences`, `sales`, `sale_items`, `payments`, RPC `create_sale`, `cancel_sale` |
@@ -65,7 +65,7 @@ document_sequences (business × type)
 | `location_type` ✅ | `STORE`, `WAREHOUSE` |
 | `member_status` ✅ | `INVITED`, `ACTIVE`, `SUSPENDED` |
 | `record_status` ✅ | `ACTIVE`, `ARCHIVED` |
-| `inventory_movement_type` | `INITIAL`, `PURCHASE`, `SALE`, `RETURN`, `ADJUSTMENT`, `TRANSFER_IN`, `TRANSFER_OUT`, `LOSS`, `DAMAGE`, `SALE_CANCELLATION` |
+| `inventory_movement_type` ✅ | `INITIAL`, `PURCHASE`, `SALE`, `SALE_CANCELLATION`, `RETURN`, `ADJUSTMENT`, `TRANSFER_OUT`, `TRANSFER_IN`, `LOSS`, `DAMAGE` |
 | `sale_status` | `COMPLETED`, `CANCELLED` |
 | `payment_status` | `UNPAID`, `PARTIAL`, `PAID` |
 | `purchase_status` | `DRAFT`, `ORDERED`, `RECEIVED`, `CANCELLED` |
@@ -166,25 +166,38 @@ Matrice détaillée : [roles-and-permissions.md](roles-and-permissions.md).
   Le caissier ne voit donc ni coûts ni marges.
 - Changement audité (`product.cost_change`). Sera recalculé par les réceptions d'achat (CMP, Phase 8).
 
-### 4.5 Inventaire (Phase 6)
+### 4.5 Inventaire (Phase 6) ✅
 
 **inventory** (Tenant) — stock courant, **cache** du grand livre.
 - PK `(business_id, product_id, location_id)`, `quantity numeric(14,3)`, `updated_at`.
-- `CHECK (quantity >= 0)` contournable uniquement si `businesses.allow_negative_stock`
-  (vérifié dans la fonction de mouvement, la contrainte devient conditionnelle via trigger).
-- **Aucune écriture directe** par le client.
+  FK composites vers `products` et `locations`. Index `(business_id, location_id)` (écran
+  de stock d'un emplacement).
+- Pas de `CHECK (quantity >= 0)` : le stock négatif dépend d'un paramètre de l'entreprise
+  (`allow_negative_stock`) ; la règle est appliquée par le moteur de stock.
+- **Lecture seule** pour les clients (`inventory.read`).
 
-**inventory_movements** (Tenant) — grand livre append-only.
-- `product_id`, `location_id`, `type inventory_movement_type`,
-  `quantity numeric(14,3)` **signée** (+ entrée / − sortie, ≠ 0),
-  `quantity_after numeric(14,3)`, `unit_cost bigint` (valorisation),
-  `reference_type` (`sale`, `purchase`, `adjustment`, `transfer`), `reference_id`,
-  `transfer_id`, `reason text`, `created_by`, `created_at`.
-- Contrainte de signe par type (ex. `SALE` < 0, `PURCHASE` > 0).
-- Index : `(business_id, product_id, created_at DESC)`, `(business_id, created_at DESC)`.
-- Écrit **uniquement** par `private.apply_stock_movement()` qui verrouille la ligne
-  `inventory` (`SELECT … FOR UPDATE`), contrôle le stock négatif, met à jour le cache et
-  insère le mouvement dans la même transaction.
+**inventory_movements** (Tenant) — grand livre **append-only** (UPDATE bloqué par trigger
+pour tous, aucun droit d'écriture client).
+- `product_id`, `location_id`, `type`, `quantity numeric(14,3)` **signée** (≠ 0),
+  `quantity_after`, `unit_cost bigint` (coût unitaire au moment du mouvement),
+  `reference_type` (`sale` | `purchase` | `adjustment` | `count` | `transfer`), `reference_id`,
+  `transfer_id`, `reason`, `created_by` (défaut `auth.uid()`), `created_at`.
+- Contraintes : signe imposé par type (`INITIAL`, `PURCHASE`, `SALE_CANCELLATION`, `RETURN`,
+  `TRANSFER_IN` > 0 ; `SALE`, `TRANSFER_OUT`, `LOSS`, `DAMAGE` < 0 ; `ADJUSTMENT` ≠ 0),
+  `transfer_id` renseigné ⇔ type `TRANSFER_*`, motif obligatoire pour `ADJUSTMENT`, `LOSS`, `DAMAGE`.
+- Index : `(business_id, product_id, created_at DESC)` (historique produit),
+  `(business_id, created_at DESC)` (journal).
+
+**Moteur de stock** — `private.apply_stock_movement()` est le **seul** code qui écrit ces deux
+tables : vérifie produit (même entreprise, `track_stock`, quantités entières), emplacement
+(même entreprise, actif), verrouille la ligne de stock (`FOR UPDATE`), refuse le stock négatif
+sauf paramètre, met à jour le cache et insère le mouvement dans la même transaction.
+Non exécutable par les rôles API ; appelé par les RPC (et plus tard ventes / achats).
+
+**Invariant vérifié par les tests** : `inventory.quantity = Σ inventory_movements.quantity`
+pour chaque couple produit × emplacement.
+
+Un emplacement qui détient du stock ne peut pas être archivé (`LOCATION_HAS_STOCK`).
 
 ### 4.6 Clients (Phase 7)
 
