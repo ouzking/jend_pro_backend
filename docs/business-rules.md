@@ -148,9 +148,14 @@ Toute erreur à n'importe quelle étape annule **tout**.
 - `customers.balance` = somme des `customer_transactions.amount` (cache, même principe que le stock).
 - `credit_limit` : `0` (défaut) = pas de crédit, `NULL` = sans plafond, `> 0` = plafond.
   Une vente à crédit est refusée si `balance + crédit > credit_limit`.
-- Règlement (`record_customer_payment`) : crée un `payment` (IN, `customer_id`) et une
-  transaction `PAYMENT` négative. Un règlement ne peut pas excéder le solde dû
-  (pas d'avoir client en V1).
+- Règlement (`record_customer_payment`) : crée un `payment` (IN, `customer_id`, emplacement)
+  et une transaction `PAYMENT` négative, atomiquement. Un règlement ne peut pas excéder le
+  solde dû (pas d'avoir client en V1). Permission `customers.payments` (caissier inclus).
+- Plafond de crédit modifiable uniquement via `set_customer_credit_limit` (`customers.manage`).
+- Reprise de l'existant / correction : `adjust_customer_balance(client, montant signé, motif)`
+  (`customers.manage`), ex. dettes du cahier de crédit au démarrage. Motif obligatoire.
+- Un client qui doit de l'argent ne peut pas être archivé.
+- Une vente à crédit exige un client actif.
 - Toute écriture de crédit est auditée et traçable jusqu'à la vente d'origine.
 
 ## 6. Fournisseurs et achats
@@ -230,7 +235,9 @@ traduit pour l'utilisateur) ; `detail` apporte un complément non contractuel.
 | `22023` | `INVALID_TIMEZONE`, `INVALID_STATUS`, `INVALID_QUANTITY`, `INVALID_QUANTITY_SIGN`, `INVALID_MOVEMENT_TYPE`, `REASON_REQUIRED`, `SAME_LOCATION` | Paramètre invalide |
 | `P0001` | `INSUFFICIENT_STOCK` (`detail` JSON : `product_id`, `location_id`, `available`, `requested`) | Stock insuffisant |
 | `P0001` | `INITIAL_ALREADY_SET`, `PRODUCT_NOT_STOCKED`, `FRACTIONAL_QUANTITY_NOT_ALLOWED`, `LOCATION_ARCHIVED`, `LOCATION_HAS_STOCK`, `CATEGORY_TOO_DEEP` | Règle de stock / catalogue |
-| `P0002` | `PRODUCT_NOT_FOUND`, `LOCATION_NOT_FOUND` | Produit / emplacement absent de l'entreprise |
+| `P0002` | `PRODUCT_NOT_FOUND`, `LOCATION_NOT_FOUND`, `CUSTOMER_NOT_FOUND` | Ressource absente de l'entreprise |
+| `P0001` | `AMOUNT_EXCEEDS_BALANCE`, `CREDIT_LIMIT_EXCEEDED` (`detail` JSON), `CUSTOMER_HAS_BALANCE`, `CUSTOMER_ARCHIVED` | Règle de crédit client |
+| `22023` | `INVALID_AMOUNT` | Montant invalide |
 | `23514` / `23505` | (PostgreSQL) | Contrainte `CHECK` / unicité violée |
 
 PostgREST renvoie `42501` en HTTP 401 (anonyme) ou 403 (connecté), les autres en 400/404/409.

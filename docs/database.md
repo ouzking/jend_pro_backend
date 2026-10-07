@@ -44,9 +44,9 @@ document_sequences (business × type)
 | ✅ 06 | `20261007170000_catalog` | 5 | `categories`, `products`, `product_costs`, audit prix/coût, RPC `set_product_status` |
 | ✅ 07 | `20261007170100_storage_catalog` | 5 | Buckets `product-images`, `business-assets` + policies par entreprise |
 | ✅ 08 | `20261007180000_inventory` | 6 | `inventory`, `inventory_movements`, moteur `private.apply_stock_movement`, RPC `adjust_stock`, `count_stock`, `transfer_stock`, `list_low_stock` |
-| 07 | `customers` | 7 | `customers`, `customer_transactions`, RPC `record_customer_payment` |
+| ✅ 09 | `20261007190000_customers_payments` | 7 | `customers`, `customer_transactions`, `payments` (socle), moteur `private.apply_customer_transaction`, RPC `set_customer_credit_limit`, `record_customer_payment`, `adjust_customer_balance` |
 | 08 | `suppliers_purchases` | 8 | `suppliers`, `supplier_products`, `purchases`, `purchase_items`, RPC `create_purchase`, `receive_purchase` |
-| 09 | `sales_payments` | 9 | `document_sequences`, `sales`, `sale_items`, `payments`, RPC `create_sale`, `cancel_sale` |
+| 09 | `sales` | 9 | `document_sequences`, `sales`, `sale_items`, liens `payments.sale_id`, RPC `create_sale`, `cancel_sale` |
 | 10 | `expenses` | 10 | `expense_categories`, `expenses` |
 | 11 | `employees` | 10 | `employees` |
 | 12 | `subscriptions` | 11 | `subscription_plans`, `subscriptions`, triggers de limites |
@@ -69,9 +69,9 @@ document_sequences (business × type)
 | `sale_status` | `COMPLETED`, `CANCELLED` |
 | `payment_status` | `UNPAID`, `PARTIAL`, `PAID` |
 | `purchase_status` | `DRAFT`, `ORDERED`, `RECEIVED`, `CANCELLED` |
-| `payment_method` | `CASH`, `WAVE`, `ORANGE_MONEY`, `FREE_MONEY`, `CARD`, `BANK_TRANSFER`, `CHEQUE`, `OTHER` |
-| `payment_direction` | `IN` (encaissement), `OUT` (décaissement) |
-| `customer_transaction_type` | `CREDIT_SALE`, `PAYMENT`, `ADJUSTMENT`, `SALE_CANCELLATION` |
+| `payment_method` ✅ | `CASH`, `WAVE`, `ORANGE_MONEY`, `FREE_MONEY`, `CARD`, `BANK_TRANSFER`, `CHEQUE`, `OTHER` |
+| `payment_direction` ✅ | `IN` (encaissement), `OUT` (décaissement) |
+| `customer_transaction_type` ✅ | `CREDIT_SALE`, `PAYMENT`, `ADJUSTMENT`, `SALE_CANCELLATION` |
 | `subscription_status` | `TRIALING`, `ACTIVE`, `PAST_DUE`, `CANCELLED`, `EXPIRED` |
 
 `TRANSFER` est scindé en `TRANSFER_OUT` / `TRANSFER_IN` : un transfert = deux mouvements
@@ -199,17 +199,28 @@ pour chaque couple produit × emplacement.
 
 Un emplacement qui détient du stock ne peut pas être archivé (`LOCATION_HAS_STOCK`).
 
-### 4.6 Clients (Phase 7)
+### 4.6 Clients et paiements (Phase 7) ✅
 
-**customers** (Tenant) — `name`, `phone`, `email`, `address`, `notes`,
-`credit_limit bigint` (défaut `0` = pas de crédit ; `NULL` = sans plafond ; voir business-rules),
-`balance bigint` (cache : montant dû par le client, ≥ 0 normalement), `status`.
-Index `(business_id, phone)`, `(business_id, name)`.
+**customers** (Tenant) — `name`, `phone` (espaces/tirets/points retirés), `email`, `address`,
+`notes`, `credit_limit bigint` (défaut `0` = pas de crédit ; `NULL` = sans plafond),
+`balance bigint ≥ 0` (cache : montant dû), `status`, `created_by` (serveur).
+- Création : `customers.create` (sans `credit_limit`, `balance`, `status`) ; modification et
+  archivage : `customers.manage` ; plafond : RPC `set_customer_credit_limit` uniquement.
+- Un client qui doit de l'argent ne peut pas être archivé (`CUSTOMER_HAS_BALANCE`).
+- Index : `(business_id, name)`, `(business_id, phone)`, débiteurs `(business_id, balance DESC) WHERE balance > 0`.
 
-**customer_transactions** (Tenant) — grand livre du compte client, append-only.
-- `customer_id`, `type customer_transaction_type`, `amount bigint` signé
-  (+ augmente la dette, − la diminue), `balance_after bigint`, `sale_id`, `payment_id`,
-  `note`, `created_by`.
+**customer_transactions** (Tenant) — grand livre du compte client, **append-only**.
+- `customer_id`, `type`, `amount bigint` signé (+ dette, −  remboursement), `balance_after`,
+  `payment_id` (obligatoire ⇔ `PAYMENT`), `note` (obligatoire pour `ADJUSTMENT`), `created_by`.
+  La colonne `sale_id` sera ajoutée en Phase 9.
+- Signe imposé : `CREDIT_SALE` > 0 ; `PAYMENT`, `SALE_CANCELLATION` < 0 ; `ADJUSTMENT` ≠ 0.
+- Index `(business_id, customer_id, created_at DESC)` (relevé client).
+
+**Moteur de compte** — `private.apply_customer_transaction()` : seul écrivain du solde et du
+grand livre ; verrouille le client, refuse un solde négatif (`AMOUNT_EXCEEDS_BALANCE`) et, pour
+`CREDIT_SALE`, un client archivé ou un dépassement de plafond (`CREDIT_LIMIT_EXCEEDED`).
+
+**Invariant vérifié par les tests** : `customers.balance = Σ customer_transactions.amount`.
 
 ### 4.7 Fournisseurs & achats (Phase 8)
 
@@ -244,12 +255,14 @@ Incrément sous verrou de ligne → numéros sans doublon par entreprise.
 **sale_items** (Tenant) — `sale_id`, `product_id`, `product_name` (copie figée),
 `quantity > 0`, `unit_price`, `unit_cost` (copie figée pour la marge), `discount_amount`, `line_total`.
 
-**payments** (Tenant) — tout mouvement d'argent.
-- `direction payment_direction`, `method payment_method`, `amount bigint > 0`,
-  `sale_id` | `purchase_id` | `customer_id` (règlement de crédit) | `expense_id`,
-  `external_reference` (id transaction Wave/OM, unique par entreprise et méthode),
-  `paid_at`, `recorded_by`. Append-only : un remboursement est un paiement `OUT`.
-- `CHECK` : exactement un contexte renseigné.
+**payments** (Tenant) — tout mouvement d'argent. ✅ Socle créé en Phase 7.
+- `location_id` (caisse / boutique concernée, obligatoire), `direction`, `method`,
+  `amount bigint > 0`, contexte : `customer_id` (règlement de crédit) ✅, `sale_id` (Phase 9),
+  `purchase_id` (Phase 8) ; `external_reference` (id Wave/OM, **unique par entreprise et
+  méthode** → un webhook rejoué ne crée pas de doublon), `note`, `paid_at`, `recorded_by`.
+- `CHECK` : exactement un contexte renseigné (contrainte étendue à chaque phase).
+- **Append-only** : un remboursement est un paiement `OUT`, jamais une modification.
+- Lecture : `reports.read` (tout) ; règlements clients visibles avec `customers.read`.
 
 ### 4.9 Dépenses & employés (Phase 10)
 

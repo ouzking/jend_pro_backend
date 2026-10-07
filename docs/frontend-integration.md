@@ -1,7 +1,7 @@
 # Guide d'intégration frontend (Flutter / React) — JËND PRO
 
 > Pour : développeurs Flutter et React qui consomment le backend Supabase.
-> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 6** (voir README pour la production).
+> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 7** (voir README pour la production).
 
 ## 1. Ce qui est prêt / ce qui arrive
 
@@ -12,7 +12,7 @@
 | Membres, invitations, rôles, permissions | ✅ Prêt | RPC `invite_member`, `get_my_permissions`… |
 | Catégories, produits, coûts, images produits, logo | ✅ Prêt | Tables `categories`, `products`, `product_costs` + Storage |
 | Stock / inventaire | ✅ Prêt | Lecture `inventory`, `inventory_movements` ; RPC `adjust_stock`, `count_stock`, `transfer_stock`, `list_low_stock` |
-| Clients et crédits | ⏳ Phase 7 | idem |
+| Clients et crédits | ✅ Prêt | Table `customers`, relevé `customer_transactions` ; RPC `record_customer_payment`, `set_customer_credit_limit`, `adjust_customer_balance` |
 | Fournisseurs, achats | ⏳ Phase 8 | idem |
 | **Ventes, paiements (caisse)** | ⏳ Phase 9 | Une RPC `create_sale` atomique sera fournie : ne rien calculer « en vrai » côté client |
 | Dépenses, employés, abonnements, notifications | ⏳ Phases 10-12 | — |
@@ -145,6 +145,30 @@ await supabase.rpc('list_low_stock', { p_business_id: bid });
 - Inventaire physique : envoyer la quantité **comptée** via `count_stock`, pas un delta
   calculé côté client (le stock peut changer pendant le comptage).
 - `INSUFFICIENT_STOCK` : `detail` contient `available` et `requested` (JSON) pour l'affichage.
+
+## 6 ter. Clients et crédit
+
+```ts
+// Recherche client à la caisse
+await supabase.from('customers').select('id, name, phone, balance, credit_limit')
+  .eq('business_id', bid).eq('status', 'ACTIVE').ilike('name', `%${q}%`).limit(20);
+
+// Création (caissier) : credit_limit / balance non fournis
+await supabase.from('customers').insert({ business_id: bid, name: 'Fatou Sow', phone: '771234567' }).select().single();
+
+// Débiteurs
+await supabase.from('customers').select('id, name, phone, balance').eq('business_id', bid).gt('balance', 0).order('balance', { ascending: false });
+
+// Relevé
+await supabase.from('customer_transactions').select('type, amount, balance_after, note, created_at')
+  .eq('business_id', bid).eq('customer_id', cid).order('created_at', { ascending: false }).range(0, 49);
+
+// Règlement (Wave : passer l'id de transaction pour éviter les doublons)
+await supabase.rpc('record_customer_payment', { p_customer_id: cid, p_amount: 10000, p_method: 'WAVE', p_location_id: loc, p_external_reference: 'TX-123' });
+```
+
+- `balance` = ce que le client **doit**. `credit_limit` : `0` = pas de crédit, `null` = illimité.
+- Erreurs à traduire : `AMOUNT_EXCEEDS_BALANCE`, `CREDIT_LIMIT_EXCEEDED`, `CUSTOMER_HAS_BALANCE`.
 
 ## 7. Images (Storage)
 

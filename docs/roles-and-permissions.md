@@ -38,6 +38,9 @@ Le client récupère ses permissions via la RPC `get_my_permissions(p_business_i
 | `count_stock(business_id, product_id, location_id, counted, reason?)` | `inventory.adjust` | Inventaire physique |
 | `transfer_stock(business_id, product_id, from_id, to_id, quantity, reason?)` | `inventory.transfer` | Transfert entre emplacements |
 | `list_low_stock(business_id, location_id?)` | `inventory.read` | Produits sous le seuil minimal |
+| `set_customer_credit_limit(customer_id, limit)` | `customers.manage` | Plafond de crédit (`0` aucun, `NULL` illimité) |
+| `record_customer_payment(customer_id, amount, method, location_id, external_reference?, note?)` | `customers.payments` | Règlement d'une dette client |
+| `adjust_customer_balance(customer_id, amount, reason)` | `customers.manage` | Correction / reprise de dette |
 
 Inviter une personne **sans compte** nécessite l'API admin d'Auth : ce sera une Edge Function
 (Phase 14) qui créera le compte puis appellera `invite_member`.

@@ -58,7 +58,8 @@ alphabétique :
 - `00200` profils · `00300` création d'entreprise et matrice RBAC · `00400` **isolation
   inter-tenant** · `00500` cycle de vie des membres et anti-escalade · `00600` catalogue
   (catégories, produits, masquage des coûts) · `00610` policies Storage · `00700` inventaire
-  (règles de stock, atomicité, invariant stock = Σ mouvements).
+  (règles de stock, atomicité, invariant stock = Σ mouvements) · `00800` clients, crédit et
+  règlements (plafonds, atomicité, invariant solde = Σ transactions).
 
 Chaque fichier de test s'exécute dans une transaction annulée (`rollback`) : aucun effet
 de bord entre les tests.
@@ -79,7 +80,7 @@ npx supabase db diff --linked --schema public,private   # doit afficher "No sche
 npx supabase db lint --linked --schema public,private
 ```
 
-**État de la production** (2026-10-07) : migrations des Phases 2 à 5 appliquées. Contrôles
+**État de la production** (2026-10-07) : migrations des Phases 2 à 6 appliquées. Contrôles
 passés : schéma identique aux migrations, linter propre, `anon` refusé sur tables et RPC,
 schéma `private` non exposé. Le seed de démo n'est **jamais** envoyé en production.
 
@@ -104,7 +105,7 @@ Les tables sont livrées **avec** leur RLS et leurs tests dans la même phase.
 | 4 | RBAC (`roles`, `permissions`, `role_permissions`), helpers RLS, `audit_logs`, tests d'isolation | ✅ Terminée |
 | 5 | Catégories, produits, coûts, Storage images | ✅ Terminée |
 | 6 | Inventaire, mouvements, ajustements, inventaire physique, transferts, stock faible | ✅ Terminée |
-| 7 | Clients, compte client, crédits, règlements | ⏳ |
+| 7 | Clients, compte client, crédits, règlements, socle des paiements | ✅ Terminée |
 | 8 | Fournisseurs, achats, réception | ⏳ |
 | 9 | Ventes, paiements, annulation (opérations atomiques) | ⏳ |
 | 10 | Dépenses, employés | ⏳ |
