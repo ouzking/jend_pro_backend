@@ -1,7 +1,7 @@
 # Guide d'intégration frontend (Flutter / React) — JËND PRO
 
 > Pour : développeurs Flutter et React qui consomment le backend Supabase.
-> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 11** (voir README pour la production).
+> Mis à jour à chaque phase backend. État actuel : **Phases 1 à 12** (voir README pour la production).
 
 ## 1. Ce qui est prêt / ce qui arrive
 
@@ -17,7 +17,7 @@
 | **Ventes, paiements (caisse)** | ✅ Prêt | RPC `create_sale` (atomique, idempotente), `cancel_sale` ; lecture `sales`, `sale_items`, `payments` |
 | Dépenses, employés | ✅ Prêt | Tables `expense_categories`, `expenses`, `employees` ; justificatifs dans le bucket privé `documents` |
 | Abonnements | ✅ Lecture | RPC `get_subscription_status`, tables `subscription_plans`, `subscriptions` (le paiement viendra en Phase 14) |
-| Notifications | ⏳ Phase 12 | — |
+| Notifications (temps réel) | ✅ Prêt | Table `notifications` + Realtime, RPC `mark_all_notifications_read` |
 
 Règle d'or : **le frontend n'est jamais une couche de sécurité ni la source de vérité des
 calculs**. Il affiche, saisit et appelle l'API ; la base décide (RLS, RPC).
@@ -259,6 +259,29 @@ const { data: [sub] } = await supabase.rpc('get_subscription_status', { p_busine
   de rafraîchir les permissions pour griser les bons boutons.
 - `PLAN_LIMIT_REACHED` (`detail` : `limit`, `max`, `current`) → proposer de changer de plan.
 - Afficher `usage` / `limits` sur l'écran d'abonnement (membres, produits, emplacements).
+
+## 6 octies. Notifications en temps réel
+
+```ts
+// Liste + badge
+await supabase.from('notifications').select('id, type, title, body, data, read_at, created_at')
+  .order('created_at', { ascending: false }).range(0, 29);
+await supabase.from('notifications').select('id', { count: 'exact', head: true }).is('read_at', null);
+
+// Temps réel (la RLS ne livre que les notifications de l'utilisateur connecté)
+supabase.channel('notifications')
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, ({ new: n }) => showToast(n.title))
+  .subscribe();
+
+await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id);
+await supabase.rpc('mark_all_notifications_read', { p_business_id: bid });
+```
+
+- Types : `LOW_STOCK`, `LARGE_SALE`, `MEMBER_INVITED`, `SUBSCRIPTION`. `data` contient les
+  identifiants utiles (ex. `product_id`, `sale_id`) pour la navigation.
+- Seuil « vente importante » : `businesses.large_sale_threshold` (paramètres, `settings.manage`).
+- Après un changement de session, appeler `supabase.realtime.setAuth(accessToken)` si le SDK
+  ne le fait pas automatiquement.
 
 ## 7. Images (Storage)
 

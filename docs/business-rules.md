@@ -103,8 +103,11 @@ Opérations disponibles (Phase 6) :
 - Le `unit_cost` figé sur chaque ligne de vente permet le calcul de la marge estimée.
 
 ### 3.6 Stock faible
-- Alerte lorsque `quantity ≤ min_stock_level` après un mouvement sortant → notification
-  `LOW_STOCK` (dédupliquée : une alerte tant que le stock n'est pas remonté au-dessus du seuil).
+- Alerte `LOW_STOCK` quand un mouvement sortant fait **passer** le stock d'un emplacement
+  de « au-dessus du seuil » à « au seuil ou en dessous ». Tant que le stock reste bas, pas de
+  nouvelle alerte ; après un réassort au-dessus du seuil, un nouveau franchissement réalerte.
+- Seuil 0 = pas d'alerte. Vente importante : seuil `large_sale_threshold` réglable par
+  l'entreprise (`settings.manage`).
 
 ## 4. Ventes
 

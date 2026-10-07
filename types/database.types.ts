@@ -114,6 +114,7 @@ export type Database = {
           currency_code: string;
           email: string | null;
           id: string;
+          large_sale_threshold: number | null;
           legal_name: string | null;
           logo_path: string | null;
           name: string;
@@ -135,6 +136,7 @@ export type Database = {
           currency_code?: string;
           email?: string | null;
           id?: string;
+          large_sale_threshold?: number | null;
           legal_name?: string | null;
           logo_path?: string | null;
           name: string;
@@ -155,6 +157,7 @@ export type Database = {
           currency_code?: string;
           email?: string | null;
           id?: string;
+          large_sale_threshold?: number | null;
           legal_name?: string | null;
           logo_path?: string | null;
           name?: string;
@@ -681,6 +684,57 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "locations_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notifications: {
+        Row: {
+          body: string | null;
+          business_id: string | null;
+          created_at: string;
+          data: NonNullable<Json>;
+          id: string;
+          read_at: string | null;
+          resource_id: string | null;
+          resource_type: string | null;
+          title: string;
+          type: Database["public"]["Enums"]["notification_type"];
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          body?: string | null;
+          business_id?: string | null;
+          created_at?: string;
+          data?: NonNullable<Json>;
+          id?: string;
+          read_at?: string | null;
+          resource_id?: string | null;
+          resource_type?: string | null;
+          title: string;
+          type: Database["public"]["Enums"]["notification_type"];
+          user_id: string;
+        };
+        Update: {
+          body?: string | null;
+          business_id?: string | null;
+          created_at?: string;
+          data?: NonNullable<Json>;
+          id?: string;
+          read_at?: string | null;
+          resource_id?: string | null;
+          resource_type?: string | null;
+          title?: string;
+          type?: Database["public"]["Enums"]["notification_type"];
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notifications_business_id_fkey";
             columns: ["business_id"];
             isOneToOne: false;
             referencedRelation: "businesses";
@@ -1709,6 +1763,10 @@ export type Database = {
           role_name: string;
         }[];
       };
+      mark_all_notifications_read: {
+        Args: { p_business_id?: string };
+        Returns: number;
+      };
       order_purchase: { Args: { p_purchase_id: string }; Returns: undefined };
       receive_purchase: { Args: { p_purchase_id: string }; Returns: undefined };
       record_customer_payment: {
@@ -1799,6 +1857,13 @@ export type Database = {
         | "DAMAGE";
       location_type: "STORE" | "WAREHOUSE";
       member_status: "INVITED" | "ACTIVE" | "SUSPENDED";
+      notification_type:
+        | "LOW_STOCK"
+        | "LARGE_SALE"
+        | "MEMBER_INVITED"
+        | "SUBSCRIPTION"
+        | "PAYMENT_RECEIVED"
+        | "SYSTEM";
       payment_direction: "IN" | "OUT";
       payment_method:
         | "CASH"
@@ -1964,6 +2029,14 @@ export const Constants = {
       ],
       location_type: ["STORE", "WAREHOUSE"],
       member_status: ["INVITED", "ACTIVE", "SUSPENDED"],
+      notification_type: [
+        "LOW_STOCK",
+        "LARGE_SALE",
+        "MEMBER_INVITED",
+        "SUBSCRIPTION",
+        "PAYMENT_RECEIVED",
+        "SYSTEM",
+      ],
       payment_direction: ["IN", "OUT"],
       payment_method: [
         "CASH",

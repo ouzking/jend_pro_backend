@@ -217,3 +217,8 @@ jend_pro_backend/
 | 2026-10-07 | Seed de dev : `supabase/seed.sql` (emplacement par défaut de la CLI) ; tests : `supabase/tests/database/*.sql` | Phase 2 |
 | 2026-10-07 | Coûts isolés dans `product_costs` (RLS `products.read_cost`) plutôt que privilèges de colonnes | Phase 5 |
 | 2026-10-07 | Colonnes « serveur » (`created_by`, `status`, `track_stock`) protégées par privilèges de colonnes : défaut `auth.uid()` + non accordées aux clients | Phase 5 |
+| 2026-10-07 | `payments` créée dès la Phase 7 (socle générique), étendue par achats et ventes | Phase 7 |
+| 2026-10-07 | `payment_status` en colonne **générée** (ne peut pas diverger des montants) | Phase 8 |
+| 2026-10-07 | Coût figé des ventes isolé dans `sale_item_costs` (même règle que `product_costs`) | Phase 9 |
+| 2026-10-07 | Mode restreint appliqué à un seul endroit (`businesses_with_permission` + `permissions.allowed_when_restricted`) | Phase 11 |
+| 2026-10-08 | Realtime limité à `notifications` ; les événements métier passent par des notifications générées par triggers | Phase 12 |

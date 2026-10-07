@@ -62,7 +62,8 @@ alphabétique :
   règlements (plafonds, atomicité, invariant solde = Σ transactions) · `00900` achats
   (cycle, réception, coût moyen pondéré, paiements fournisseurs) · `01000` ventes (atomicité,
   idempotence, crédit, remises, annulation, visibilité caissier, invariants) · `01100` dépenses,
-  employés et bucket privé `documents` · `01200` abonnements (limites, mode restreint, grâce).
+  employés et bucket privé `documents` · `01200` abonnements (limites, mode restreint, grâce) ·
+  `01300` notifications (événements, destinataires, accès, publication Realtime).
 
 Chaque fichier de test s'exécute dans une transaction annulée (`rollback`) : aucun effet
 de bord entre les tests.
@@ -83,7 +84,7 @@ npx supabase db diff --linked --schema public,private   # doit afficher "No sche
 npx supabase db lint --linked --schema public,private
 ```
 
-**État de la production** (2026-10-07) : migrations des Phases 2 à 11 appliquées. Contrôles
+**État de la production** (2026-10-07) : migrations des Phases 2 à 12 appliquées. Contrôles
 passés : schéma identique aux migrations, linter propre, `anon` refusé sur tables et RPC,
 schéma `private` non exposé. Le seed de démo n'est **jamais** envoyé en production.
 
@@ -113,7 +114,7 @@ Les tables sont livrées **avec** leur RLS et leurs tests dans la même phase.
 | 9 | Ventes (caisse atomique et idempotente), paiements multiples, crédit, annulation | ✅ Terminée |
 | 10 | Dépenses (audit complet, justificatifs privés), employés | ✅ Terminée |
 | 11 | Abonnements, essai, limites des plans, mode restreint (lecture seule + caisse) | ✅ Terminée |
-| 12 | Notifications, Realtime | ⏳ |
+| 12 | Notifications (stock faible, vente importante, invitation, abonnement), Realtime | ✅ Terminée |
 | 13 | Audit complet | ⏳ |
 | 14 | Edge Functions (webhooks paiement, documents, notifications) | ⏳ |
 | 15 | Tests transverses, hardening, performance, analytics | ⏳ |

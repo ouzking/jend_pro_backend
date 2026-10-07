@@ -49,7 +49,7 @@ document_sequences (business × type)
 | ✅ 11 | `20261007210000_sales` | 9 | `sales`, `sale_items`, `sale_item_costs`, `payments.sale_id`, `customer_transactions.sale_id`, RPC `create_sale`, `cancel_sale` |
 | ✅ 12 | `20261007220000_expenses_employees` | 10 | `expense_categories` (+ défauts), `expenses` (audit complet), `employees`, bucket privé `documents` |
 | ✅ 13 | `20261007230000_subscriptions` | 11 | `subscription_plans` (+ 5 plans provisoires), `subscriptions`, essai 14 j, mode restreint (`permissions.allowed_when_restricted`), triggers de limites, RPC `get_subscription_status` |
-| 13 | `notifications` | 12 | `notifications`, publication Realtime |
+| ✅ 14 | `20261008090000_notifications` | 12 | `notifications`, événements par triggers (stock faible, vente importante, invitation, abonnement), `businesses.large_sale_threshold`, publication Realtime |
 | 14 | `storage` (suite) | 8→10 | Buckets privés `documents`, `invoices` + policies |
 | 15 | `analytics` | 15 | Vues / RPC de reporting, index complémentaires |
 
@@ -335,12 +335,27 @@ générale), `amount bigint > 0`, `description`, `spent_on date` (défaut aujour
 (toutes les lectures, `sales.create`, `sales.credit`, `sales.discount`, `customers.create`,
 `customers.payments`, `subscription.manage`).
 
-### 4.11 Notifications (Phase 12)
+### 4.11 Notifications (Phase 12) ✅
 
-**notifications** — `business_id` (nullable pour notifications plateforme),
-`user_id` (destinataire), `type` (`LOW_STOCK`, `LARGE_SALE`, `PAYMENT_RECEIVED`,
-`SUBSCRIPTION`…), `title`, `body`, `data jsonb`, `resource_type`, `resource_id`, `read_at`.
-Index `(user_id, read_at, created_at DESC)`. Publiée dans Realtime.
+**notifications** — une ligne **par destinataire** : `business_id` (nullable = plateforme),
+`user_id`, `type notification_type` (`LOW_STOCK`, `LARGE_SALE`, `MEMBER_INVITED`,
+`SUBSCRIPTION`, `PAYMENT_RECEIVED`, `SYSTEM`), `title`, `body`, `data jsonb`,
+`resource_type`, `resource_id`, `read_at`, `created_at`.
+- Écrites **uniquement** par la base (`private.notify_user`, `private.notify_members`),
+  jamais par les clients (pas d'usurpation).
+- Chaque utilisateur lit, marque comme lues (`read_at` seul modifiable) et supprime **ses**
+  notifications ; RPC `mark_all_notifications_read(business_id?)`.
+- Index `(user_id, created_at DESC)` (centre de notifications), `(user_id) WHERE read_at IS NULL` (badge).
+- **Seule table publiée dans Realtime** (`supabase_realtime`) ; la RLS filtre les événements.
+
+| Événement | Déclencheur | Destinataires |
+|---|---|---|
+| `LOW_STOCK` | mouvement qui fait **franchir** le seuil `min_stock_level` vers le bas | membres actifs avec `inventory.adjust` |
+| `LARGE_SALE` | vente dont le total ≥ `businesses.large_sale_threshold` (NULL = désactivé) | membres actifs avec `reports.read` |
+| `MEMBER_INVITED` | invitation créée | la personne invitée |
+| `SUBSCRIPTION` | abonnement passé `PAST_DUE` ou `EXPIRED` | membres actifs avec `subscription.manage` |
+
+Les destinataires sont résolus sur les **rôles** (indépendamment du mode restreint).
 
 ## 5. Index — principes
 
