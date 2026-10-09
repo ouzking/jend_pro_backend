@@ -8,6 +8,8 @@
 --   owner@demo.jendpro.local    OWNER of "Boutique Démo Dakar"
 --   cashier@demo.jendpro.local  CASHIER of "Boutique Démo Dakar"
 --   stock@demo.jendpro.local    STOCK_MANAGER of "Boutique Démo Dakar"
+--   admin@demo.jendpro.local    SUPER_ADMIN of the back-office (platform staff, no business)
+--   support@demo.jendpro.local  SUPPORT of the back-office
 --
 -- Demo data is created through the real RPCs (purchases, sales, credit), so a
 -- successful `db reset` also exercises the main business flows end to end.
@@ -130,6 +132,30 @@ begin
   select v_business, id, v_location, a, d, m::public.payment_method
     from (values ('Loyer', 150000, 'Loyer du mois', 'BANK_TRANSFER'), ('Électricité', 25000, 'Facture Senelec', 'WAVE')) x(cat, a, d, m)
     join public.expense_categories ec on ec.business_id = v_business and ec.name = x.cat;
+
+  perform set_config('request.jwt.claims', '', true);
+end;
+$$;
+
+-- Back-office staff (platform RBAC, independent from businesses) and one support
+-- ticket opened by the demo owner, so every back-office screen has data locally.
+do $$
+declare
+  v_admin   uuid := pg_temp.seed_user('admin@demo.jendpro.local', 'Aminata Diop');
+  v_support uuid := pg_temp.seed_user('support@demo.jendpro.local', 'Cheikh Ndao');
+  v_owner   uuid := (select id from auth.users where email = 'owner@demo.jendpro.local');
+  v_ticket  uuid;
+begin
+  insert into public.platform_admins (user_id, role) values (v_admin, 'SUPER_ADMIN'), (v_support, 'SUPPORT');
+
+  perform pg_temp.act_as(v_owner);
+  v_ticket := public.create_support_ticket('Paiement Wave non reconnu',
+    'Un client a payé par Wave mais la vente reste en crédit. Que faire ?',
+    (select id from public.businesses where name = 'Boutique Démo Dakar'), 'HIGH');
+
+  perform pg_temp.act_as(v_support);
+  perform public.admin_reply_support_ticket(v_ticket,
+    'Bonjour Awa, pouvez-vous nous indiquer le numéro de la vente concernée ?');
 
   perform set_config('request.jwt.claims', '', true);
 end;

@@ -177,3 +177,54 @@ filtré, au même endroit que la vérification des rôles.
 | `get_dashboard_summary(business_id, from, to, location_id?)` | `reports.read` (+ `products.read_cost` pour la marge) | Indicateurs de la période |
 | `get_sales_timeseries(business_id, from, to, granularity?, location_id?)` | `reports.read` | Évolution jour / semaine / mois |
 | `get_top_products(business_id, from, to, limit?, location_id?)` | `reports.read` | Meilleures ventes |
+
+## 6. Back-office plateforme (Phase 16)
+
+Le back-office est utilisé par **l'équipe JËND PRO**, pas par les commerçants. Il ne détient
+jamais la clé `service_role` : le staff se connecte comme un utilisateur normal et est
+autorisé par un **RBAC plateforme séparé** (`platform_admins` × `platform_role_permissions`),
+sans aucun lien avec `business_members`.
+
+- Toute lecture inter-entreprises passe par une RPC `admin_*` qui commence par
+  `private.require_platform_permission('<permission>')`. **Aucune policy n'a été ajoutée aux
+  tables des entreprises** : l'isolation des tenants est inchangée.
+- Le premier `SUPER_ADMIN` est créé en SQL (éditeur SQL / `service_role`) :
+  `insert into public.platform_admins (user_id, role) select id, 'SUPER_ADMIN' from auth.users where email = '…';`
+- Un administrateur ne modifie ni son propre rôle ni son propre statut ; un admin suspendu
+  perd immédiatement toutes ses permissions ; il reste toujours un `SUPER_ADMIN` actif.
+
+| Permission | SUPER_ADMIN | OPERATIONS | SUPPORT | FINANCE | ANALYST |
+|---|:-:|:-:|:-:|:-:|:-:|
+| `businesses.read` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `businesses.manage` (suspendre / réactiver) | ✅ | ✅ | — | — | — |
+| `users.read` | ✅ | ✅ | ✅ | — | — |
+| `subscriptions.read` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `billing.read` | ✅ | ✅ | — | ✅ | ✅ |
+| `billing.manage` (paiement hors ligne) | ✅ | — | — | ✅ | — |
+| `support.read` | ✅ | ✅ | ✅ | — | — |
+| `support.manage` | ✅ | ✅ | ✅ | — | — |
+| `announcements.read` | ✅ | ✅ | ✅ | — | — |
+| `announcements.manage` | ✅ | ✅ | — | — | — |
+| `audit.read` (toute la plateforme) | ✅ | ✅ | — | ✅ | — |
+| `analytics.read` | ✅ | ✅ | — | ✅ | ✅ |
+| `admins.manage` | ✅ | — | — | — | — |
+
+| RPC | Permission | Effet |
+|---|---|---|
+| `get_my_platform_access()` | — | Rôle, statut et permissions plateforme de l'appelant (0 ligne si non-staff) |
+| `admin_list_businesses(search?, status?, plan_code?, subscription_status?, created_from?, created_to?, sort?, limit?, offset?)` | `businesses.read` | Liste paginée (+ `total_count`) |
+| `admin_get_business(business_id)` | `businesses.read` | Fiche, compteurs, activité 30 j, historique d'abonnement |
+| `admin_list_business_members(business_id)` | `businesses.read` | Membres avec e-mail et dernière connexion |
+| `admin_set_business_status(business_id, status, reason)` | `businesses.manage` | Suspension / réactivation, auditée, propriétaires notifiés |
+| `admin_list_users(search?, limit?, offset?)` / `admin_get_user(user_id)` | `users.read` | Utilisateurs et appartenances |
+| `admin_list_subscriptions(status?, plan_code?, search?, ending_within_days?, current_only?, limit?, offset?)` | `subscriptions.read` | Abonnements |
+| `admin_list_billing_events(search?, provider?, from?, to?, limit?, offset?)` | `billing.read` | Paiements d'abonnement **confirmés** |
+| `admin_record_manual_payment(business_id, plan_code, months, amount, reference, note?)` | `billing.manage` | Paiement hors ligne : mêmes règles que le webhook (`provider = MANUAL`) |
+| `admin_get_audit_log(limit?, before?, before_id?, business_id?, action?, resource_type?, actor_id?, from?, to?)` | `audit.read` | Journal de toute la plateforme (keyset) |
+| `admin_get_overview(from, to)` / `admin_get_timeseries(from, to, granularity?)` | `analytics.read` | Indicateurs plateforme ([business-rules.md §14](business-rules.md#14-indicateurs-plateforme-back-office)) |
+| `admin_list_support_tickets(…)` / `admin_get_support_ticket(id)` | `support.read` | Tickets et conversation (notes internes incluses) |
+| `admin_reply_support_ticket(id, body, internal?)` / `admin_update_support_ticket(id, status?, priority?, assigned_to?, unassign?)` | `support.manage` | Réponse, note interne, statut, assignation |
+| `admin_list_announcements(limit?, offset?)` / `admin_count_announcement_recipients(audience, value?)` | `announcements.read` | Historique, aperçu de l'audience |
+| `admin_save_announcement(id?, title, body, audience, value?)` / `admin_delete_announcement(id)` / `admin_send_announcement(id)` | `announcements.manage` | Brouillon, suppression de brouillon, envoi |
+| `admin_list_admins()` / `admin_grant_platform_role(email, role)` / `admin_set_admin_status(user_id, status)` | `admins.manage` | Équipe plateforme |
+| `create_support_ticket(subject, body, business_id?, priority?)` / `reply_support_ticket(id, body)` | utilisateur connecté (membre actif si `business_id`) | Côté commerçant (app) |

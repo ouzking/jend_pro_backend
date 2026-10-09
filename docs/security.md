@@ -26,6 +26,17 @@
 | `authenticated` (JWT utilisateur) | Flutter, React après login | Soumis à la RLS |
 | `service_role` (secret key) | **Edge Functions uniquement** (variable d'environnement) | Bypass RLS — jamais dans un client, jamais dans Git |
 
+### 2.1 Équipe plateforme (back-office, Phase 16)
+
+Le back-office React s'exécute dans un navigateur : il utilise la clé **publishable** et le JWT
+du membre du staff, **jamais** `service_role`. Les droits plateforme viennent de
+`platform_admins` et sont vérifiés en base par `private.require_platform_permission()` en
+tête de chaque RPC `admin_*` ; aucune policy des tables des entreprises n'est élargie. Les
+actions sensibles (suspension, paiement manuel, gestion du staff, tickets, annonces) sont
+auditées (`business.status_change`, `billing.manual_payment`, `platform_admin.*`,
+`support.ticket_update`, `announcement.send`). Recommandé en production : MFA (TOTP) pour
+les comptes du staff (Dashboard → Auth).
+
 ## 3. RLS — règles de conception
 
 1. `ALTER TABLE … ENABLE ROW LEVEL SECURITY` **dans la même migration** que le `CREATE TABLE`.

@@ -910,6 +910,126 @@ export type Database = {
         };
         Relationships: [];
       };
+      platform_admins: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          role: Database["public"]["Enums"]["platform_role"];
+          status: Database["public"]["Enums"]["platform_admin_status"];
+          updated_at: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          role: Database["public"]["Enums"]["platform_role"];
+          status?: Database["public"]["Enums"]["platform_admin_status"];
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          role?: Database["public"]["Enums"]["platform_role"];
+          status?: Database["public"]["Enums"]["platform_admin_status"];
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      platform_announcements: {
+        Row: {
+          audience: Database["public"]["Enums"]["announcement_audience"];
+          audience_value: string | null;
+          body: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          recipients_count: number | null;
+          sent_at: string | null;
+          sent_by: string | null;
+          status: Database["public"]["Enums"]["announcement_status"];
+          title: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          audience?: Database["public"]["Enums"]["announcement_audience"];
+          audience_value?: string | null;
+          body: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          recipients_count?: number | null;
+          sent_at?: string | null;
+          sent_by?: string | null;
+          status?: Database["public"]["Enums"]["announcement_status"];
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          audience?: Database["public"]["Enums"]["announcement_audience"];
+          audience_value?: string | null;
+          body?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          recipients_count?: number | null;
+          sent_at?: string | null;
+          sent_by?: string | null;
+          status?: Database["public"]["Enums"]["announcement_status"];
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      platform_permissions: {
+        Row: {
+          code: string;
+          created_at: string;
+          description: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          code: string;
+          created_at?: string;
+          description: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          description?: string;
+        };
+        Relationships: [];
+      };
+      platform_role_permissions: {
+        Row: {
+          created_at: string;
+          permission_code: string;
+          role: Database["public"]["Enums"]["platform_role"];
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          permission_code: string;
+          role: Database["public"]["Enums"]["platform_role"];
+        };
+        Update: {
+          created_at?: string;
+          permission_code?: string;
+          role?: Database["public"]["Enums"]["platform_role"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "platform_role_permissions_permission_code_fkey";
+            columns: ["permission_code"];
+            isOneToOne: false;
+            referencedRelation: "platform_permissions";
+            referencedColumns: ["code"];
+          },
+        ];
+      };
       product_costs: {
         Row: {
           business_id: string;
@@ -1660,6 +1780,102 @@ export type Database = {
           },
         ];
       };
+      support_messages: {
+        Row: {
+          author_id: string | null;
+          body: string;
+          created_at: string;
+          id: string;
+          is_internal: boolean;
+          is_staff: boolean;
+          ticket_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          author_id?: string | null;
+          body: string;
+          created_at?: string;
+          id?: string;
+          is_internal?: boolean;
+          is_staff?: boolean;
+          ticket_id: string;
+        };
+        Update: {
+          author_id?: string | null;
+          body?: string;
+          created_at?: string;
+          id?: string;
+          is_internal?: boolean;
+          is_staff?: boolean;
+          ticket_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_ticket_id_fkey";
+            columns: ["ticket_id"];
+            isOneToOne: false;
+            referencedRelation: "support_tickets";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      support_tickets: {
+        Row: {
+          assigned_to: string | null;
+          business_id: string | null;
+          closed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          last_message_at: string;
+          number: number;
+          priority: Database["public"]["Enums"]["ticket_priority"];
+          resolved_at: string | null;
+          status: Database["public"]["Enums"]["ticket_status"];
+          subject: string;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          assigned_to?: string | null;
+          business_id?: string | null;
+          closed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          last_message_at?: string;
+          number?: never;
+          priority?: Database["public"]["Enums"]["ticket_priority"];
+          resolved_at?: string | null;
+          status?: Database["public"]["Enums"]["ticket_status"];
+          subject: string;
+          updated_at?: string;
+        };
+        Update: {
+          assigned_to?: string | null;
+          business_id?: string | null;
+          closed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          last_message_at?: string;
+          number?: never;
+          priority?: Database["public"]["Enums"]["ticket_priority"];
+          resolved_at?: string | null;
+          status?: Database["public"]["Enums"]["ticket_status"];
+          subject?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_business_id_fkey";
+            columns: ["business_id"];
+            isOneToOne: false;
+            referencedRelation: "businesses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       supplier_balances: {
@@ -1709,6 +1925,299 @@ export type Database = {
         };
         Returns: string;
       };
+      admin_count_announcement_recipients: {
+        Args: {
+          p_audience: Database["public"]["Enums"]["announcement_audience"];
+          p_audience_value?: string;
+        };
+        Returns: number;
+      };
+      admin_delete_announcement: { Args: { p_id: string }; Returns: undefined };
+      admin_get_audit_log: {
+        Args: {
+          p_action?: string;
+          p_actor_id?: string;
+          p_before?: string;
+          p_before_id?: string;
+          p_business_id?: string;
+          p_from?: string;
+          p_limit?: number;
+          p_resource_type?: string;
+          p_to?: string;
+        };
+        Returns: {
+          action: string;
+          actor_email: string;
+          actor_id: string;
+          actor_name: string;
+          actor_role: string;
+          business_id: string;
+          business_name: string;
+          created_at: string;
+          id: string;
+          metadata: Json;
+          resource_id: string;
+          resource_type: string;
+        }[];
+      };
+      admin_get_business: { Args: { p_business_id: string }; Returns: Json };
+      admin_get_overview: {
+        Args: { p_from: string; p_to: string };
+        Returns: Json;
+      };
+      admin_get_support_ticket: {
+        Args: { p_ticket_id: string };
+        Returns: Json;
+      };
+      admin_get_timeseries: {
+        Args: { p_from: string; p_granularity?: string; p_to: string };
+        Returns: {
+          active_businesses: number;
+          bucket: string;
+          collected: number;
+          gmv: number;
+          new_businesses: number;
+          new_users: number;
+          payments_count: number;
+          sales_count: number;
+        }[];
+      };
+      admin_get_user: { Args: { p_user_id: string }; Returns: Json };
+      admin_grant_platform_role: {
+        Args: {
+          p_email: string;
+          p_role: Database["public"]["Enums"]["platform_role"];
+        };
+        Returns: string;
+      };
+      admin_list_admins: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          created_at: string;
+          email: string;
+          full_name: string;
+          last_sign_in_at: string;
+          role: Database["public"]["Enums"]["platform_role"];
+          status: Database["public"]["Enums"]["platform_admin_status"];
+          user_id: string;
+        }[];
+      };
+      admin_list_announcements: {
+        Args: { p_limit?: number; p_offset?: number };
+        Returns: {
+          audience: Database["public"]["Enums"]["announcement_audience"];
+          audience_label: string;
+          audience_value: string;
+          body: string;
+          created_at: string;
+          created_by_name: string;
+          id: string;
+          recipients_count: number;
+          sent_at: string;
+          sent_by_name: string;
+          status: Database["public"]["Enums"]["announcement_status"];
+          title: string;
+          total_count: number;
+        }[];
+      };
+      admin_list_billing_events: {
+        Args: {
+          p_from?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_provider?: string;
+          p_search?: string;
+          p_to?: string;
+        };
+        Returns: {
+          amount: number;
+          business_id: string;
+          business_name: string;
+          event_id: string;
+          id: string;
+          months: number;
+          plan_code: string;
+          processed_at: string;
+          provider: string;
+          total_count: number;
+        }[];
+      };
+      admin_list_business_members: {
+        Args: { p_business_id: string };
+        Returns: {
+          created_at: string;
+          email: string;
+          full_name: string;
+          joined_at: string;
+          last_sign_in_at: string;
+          member_id: string;
+          phone: string;
+          role_code: string;
+          role_name: string;
+          status: Database["public"]["Enums"]["member_status"];
+          user_id: string;
+        }[];
+      };
+      admin_list_businesses: {
+        Args: {
+          p_created_from?: string;
+          p_created_to?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_plan_code?: string;
+          p_search?: string;
+          p_sort?: string;
+          p_status?: Database["public"]["Enums"]["business_status"];
+          p_subscription_status?: Database["public"]["Enums"]["subscription_status"];
+        };
+        Returns: {
+          city: string;
+          country_code: string;
+          created_at: string;
+          current_period_end: string;
+          email: string;
+          id: string;
+          last_sale_at: string;
+          members_count: number;
+          name: string;
+          owner_email: string;
+          owner_name: string;
+          phone: string;
+          plan_code: string;
+          plan_name: string;
+          status: Database["public"]["Enums"]["business_status"];
+          subscription_status: Database["public"]["Enums"]["subscription_status"];
+          total_count: number;
+          trial_ends_at: string;
+        }[];
+      };
+      admin_list_subscriptions: {
+        Args: {
+          p_current_only?: boolean;
+          p_ending_within_days?: number;
+          p_limit?: number;
+          p_offset?: number;
+          p_plan_code?: string;
+          p_search?: string;
+          p_status?: Database["public"]["Enums"]["subscription_status"];
+        };
+        Returns: {
+          billing_period: Database["public"]["Enums"]["billing_period"];
+          business_id: string;
+          business_name: string;
+          business_status: Database["public"]["Enums"]["business_status"];
+          cancel_at_period_end: boolean;
+          created_at: string;
+          current_period_end: string;
+          current_period_start: string;
+          ended_at: string;
+          external_reference: string;
+          id: string;
+          plan_code: string;
+          plan_name: string;
+          price_amount: number;
+          status: Database["public"]["Enums"]["subscription_status"];
+          total_count: number;
+          trial_ends_at: string;
+        }[];
+      };
+      admin_list_support_tickets: {
+        Args: {
+          p_assigned_to?: string;
+          p_business_id?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_open_only?: boolean;
+          p_priority?: Database["public"]["Enums"]["ticket_priority"];
+          p_search?: string;
+          p_status?: Database["public"]["Enums"]["ticket_status"];
+          p_unassigned?: boolean;
+        };
+        Returns: {
+          assigned_to: string;
+          assignee_name: string;
+          business_id: string;
+          business_name: string;
+          created_at: string;
+          created_by: string;
+          id: string;
+          last_message_at: string;
+          messages_count: number;
+          number: number;
+          priority: Database["public"]["Enums"]["ticket_priority"];
+          requester_email: string;
+          requester_name: string;
+          status: Database["public"]["Enums"]["ticket_status"];
+          subject: string;
+          total_count: number;
+        }[];
+      };
+      admin_list_users: {
+        Args: { p_limit?: number; p_offset?: number; p_search?: string };
+        Returns: {
+          businesses_count: number;
+          created_at: string;
+          email: string;
+          email_confirmed: boolean;
+          full_name: string;
+          id: string;
+          last_sign_in_at: string;
+          phone: string;
+          platform_role: Database["public"]["Enums"]["platform_role"];
+          total_count: number;
+        }[];
+      };
+      admin_record_manual_payment: {
+        Args: {
+          p_amount: number;
+          p_business_id: string;
+          p_months: number;
+          p_note?: string;
+          p_plan_code: string;
+          p_reference: string;
+        };
+        Returns: Json;
+      };
+      admin_reply_support_ticket: {
+        Args: { p_body: string; p_internal?: boolean; p_ticket_id: string };
+        Returns: string;
+      };
+      admin_save_announcement: {
+        Args: {
+          p_audience: Database["public"]["Enums"]["announcement_audience"];
+          p_audience_value?: string;
+          p_body: string;
+          p_id: string;
+          p_title: string;
+        };
+        Returns: string;
+      };
+      admin_send_announcement: { Args: { p_id: string }; Returns: number };
+      admin_set_admin_status: {
+        Args: {
+          p_status: Database["public"]["Enums"]["platform_admin_status"];
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
+      admin_set_business_status: {
+        Args: {
+          p_business_id: string;
+          p_reason: string;
+          p_status: Database["public"]["Enums"]["business_status"];
+        };
+        Returns: undefined;
+      };
+      admin_update_support_ticket: {
+        Args: {
+          p_assigned_to?: string;
+          p_priority?: Database["public"]["Enums"]["ticket_priority"];
+          p_status?: Database["public"]["Enums"]["ticket_status"];
+          p_ticket_id: string;
+          p_unassign?: boolean;
+        };
+        Returns: undefined;
+      };
       cancel_purchase: {
         Args: { p_purchase_id: string; p_reason: string };
         Returns: undefined;
@@ -1757,6 +2266,15 @@ export type Database = {
         };
         Returns: string;
       };
+      create_support_ticket: {
+        Args: {
+          p_body: string;
+          p_business_id?: string;
+          p_priority?: Database["public"]["Enums"]["ticket_priority"];
+          p_subject: string;
+        };
+        Returns: string;
+      };
       decline_invitation: {
         Args: { p_business_id: string };
         Returns: undefined;
@@ -1796,6 +2314,14 @@ export type Database = {
       get_my_permissions: {
         Args: { p_business_id: string };
         Returns: string[];
+      };
+      get_my_platform_access: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          permissions: string[];
+          role: Database["public"]["Enums"]["platform_role"];
+          status: Database["public"]["Enums"]["platform_admin_status"];
+        }[];
       };
       get_sales_timeseries: {
         Args: {
@@ -1924,6 +2450,10 @@ export type Database = {
         Args: { p_business_id: string; p_user_id: string };
         Returns: undefined;
       };
+      reply_support_ticket: {
+        Args: { p_body: string; p_ticket_id: string };
+        Returns: string;
+      };
       save_purchase: {
         Args: {
           p_business_id: string;
@@ -1969,6 +2499,8 @@ export type Database = {
       };
     };
     Enums: {
+      announcement_audience: "ALL" | "PLAN" | "BUSINESS" | "ROLE";
+      announcement_status: "DRAFT" | "SENT";
       billing_period: "MONTHLY" | "YEARLY";
       business_status: "ACTIVE" | "SUSPENDED";
       customer_transaction_type:
@@ -2004,11 +2536,16 @@ export type Database = {
         | "CHEQUE"
         | "OTHER";
       payment_status: "UNPAID" | "PARTIAL" | "PAID";
+      platform_admin_status: "ACTIVE" | "SUSPENDED";
+      platform_role:
+        "SUPER_ADMIN" | "OPERATIONS" | "SUPPORT" | "FINANCE" | "ANALYST";
       purchase_status: "DRAFT" | "ORDERED" | "RECEIVED" | "CANCELLED";
       record_status: "ACTIVE" | "ARCHIVED";
       sale_status: "COMPLETED" | "CANCELLED";
       subscription_status:
         "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELLED" | "EXPIRED";
+      ticket_priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+      ticket_status: "OPEN" | "IN_PROGRESS" | "WAITING" | "RESOLVED" | "CLOSED";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -2136,6 +2673,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      announcement_audience: ["ALL", "PLAN", "BUSINESS", "ROLE"],
+      announcement_status: ["DRAFT", "SENT"],
       billing_period: ["MONTHLY", "YEARLY"],
       business_status: ["ACTIVE", "SUSPENDED"],
       customer_transaction_type: [
@@ -2178,6 +2717,14 @@ export const Constants = {
         "OTHER",
       ],
       payment_status: ["UNPAID", "PARTIAL", "PAID"],
+      platform_admin_status: ["ACTIVE", "SUSPENDED"],
+      platform_role: [
+        "SUPER_ADMIN",
+        "OPERATIONS",
+        "SUPPORT",
+        "FINANCE",
+        "ANALYST",
+      ],
       purchase_status: ["DRAFT", "ORDERED", "RECEIVED", "CANCELLED"],
       record_status: ["ACTIVE", "ARCHIVED"],
       sale_status: ["COMPLETED", "CANCELLED"],
@@ -2188,6 +2735,8 @@ export const Constants = {
         "CANCELLED",
         "EXPIRED",
       ],
+      ticket_priority: ["LOW", "NORMAL", "HIGH", "URGENT"],
+      ticket_status: ["OPEN", "IN_PROGRESS", "WAITING", "RESOLVED", "CLOSED"],
     },
   },
 } as const;

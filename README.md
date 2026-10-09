@@ -41,6 +41,7 @@ Studio `http://127.0.0.1:54423`, e-mails de test (Mailpit) `http://127.0.0.1:544
 Comptes de démonstration créés par `supabase/seed.sql` (local uniquement, mot de passe
 `jendpro-demo`) pour « Boutique Démo Dakar » : `owner@demo.jendpro.local` (OWNER),
 `cashier@demo.jendpro.local` (CASHIER), `stock@demo.jendpro.local` (STOCK_MANAGER).
+Back-office : `admin@demo.jendpro.local` (SUPER_ADMIN) et `support@demo.jendpro.local` (SUPPORT).
 Données de démo réalistes : 8 produits en 3 catégories, un fournisseur et un achat
 réceptionné, 3 clients (dont une dette reprise du cahier), 3 ventes (espèces, Wave, crédit),
 un règlement Orange Money et 2 dépenses — toutes créées via les vraies RPC.
@@ -69,9 +70,11 @@ alphabétique :
   `01300` notifications (événements, destinataires, accès, publication Realtime) · `01400` audit
   (couverture, rôle de l'acteur, immuabilité, journal paginé) · `01500` plateforme (activation
   idempotente, tâche quotidienne) · `01600` analytics (chiffres calculés à la main) ·
-  `01700` **garde-fous d'architecture** (surface API et tables modifiables figées, conventions).
+  `01700` **garde-fous d'architecture** (surface API et tables modifiables figées, conventions) ·
+`01800` back-office (RBAC plateforme, lectures inter-entreprises, suspension, paiement manuel,
+analytics, audit, gestion du staff) · `01900` support et annonces.
 
-**Total : 564 tests pgTAP + 20 tests Deno**, exécutés en CI à chaque push
+**Total : 658 tests pgTAP + 20 tests Deno**, exécutés en CI à chaque push
 (`.github/workflows/ci.yml`).
 
 Chaque fichier de test s'exécute dans une transaction annulée (`rollback`) : aucun effet
@@ -135,6 +138,7 @@ Les tables sont livrées **avec** leur RLS et leurs tests dans la même phase.
 | 13 | Audit complet et immuable, rôle de l'acteur, journal paginé | ✅ Terminée |
 | 14 | Edge Functions (`invite-member`, `billing-webhook`), activation idempotente des abonnements, tâche quotidienne `pg_cron` | ✅ Terminée |
 | 15 | Analytics (tableau de bord), garde-fous d'architecture, revue des index, seed de démo, CI | ✅ Terminée |
+| 16 | Back-office plateforme : RBAC staff, RPC `admin_*`, support (tickets), annonces, paiements manuels, indicateurs SaaS | ✅ Terminée (local, non déployée) |
 
 ## Configuration manuelle Supabase (Dashboard)
 

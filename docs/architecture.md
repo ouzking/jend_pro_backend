@@ -263,3 +263,5 @@ résumé quotidien / IA.
 | 2026-10-08 | Journal d'audit immuable pour tous les rôles (purge plateforme explicite uniquement) | Phase 13 |
 | 2026-10-08 | Edge Functions limitées à ce qui exige un secret serveur ; tâches planifiées en `pg_cron` | Phase 14 |
 | 2026-10-08 | Analytics en RPC SQL ; FK vers `auth.users` non indexées (revue documentée) ; garde-fous d'architecture en test | Phase 15 |
+| 2026-10-09 | Back-office : RBAC plateforme séparé (`platform_admins`) + RPC `admin_*` en `SECURITY DEFINER` ; aucune policy ajoutée aux tables tenant ; jamais de `service_role` dans le navigateur | Phase 16 |
+| 2026-10-09 | Support (tickets, notes internes) et annonces plateforme livrés via les `notifications` `SYSTEM` existantes (pas de nouveau canal) | Phase 16 |

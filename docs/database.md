@@ -53,6 +53,8 @@ document_sequences (business × type)
 | ✅ 15 | `20261008100000_audit_hardening` | 13 | `audit_logs.actor_role`, immutabilité (DELETE bloqué sauf purge plateforme), événements emplacements / clients / fournisseurs / produits, RPC `get_audit_log` |
 | ✅ 16 | `20261008110000_platform_jobs` | 14 | `billing_events` (idempotence), RPC `platform_activate_subscription` (service_role), `private.daily_maintenance` + `pg_cron` |
 | ✅ 17 | `20261008120000_analytics_hardening` | 15 | RPC `get_dashboard_summary`, `get_sales_timeseries`, `get_top_products` ; index `product_costs(business_id)`, `sale_item_costs(business_id, sale_item_id)` |
+| ✅ 18 | `20261009090000_platform_admin` | 16 | RBAC plateforme (`platform_admins`, `platform_permissions`, `platform_role_permissions`), helpers `has_platform_permission` / `require_platform_permission`, RPC `admin_*` (entreprises, utilisateurs, abonnements, paiements, audit, analytics, administrateurs), paiement manuel |
+| ✅ 19 | `20261009100000_support_announcements` | 16 | `support_tickets`, `support_messages` (append-only), `platform_announcements`, RPC `create_support_ticket`, `reply_support_ticket`, `admin_*` support et annonces |
 | — | *(futur)* | — | Bucket privé `invoices` (factures PDF générées par Edge Function) — non construit tant que le besoin n'est pas confirmé |
 
 > `audit_logs` est avancé en Phase 4 (au lieu de 13) : les RPC des phases 5–10 doivent
@@ -74,6 +76,12 @@ document_sequences (business × type)
 | `payment_direction` ✅ | `IN` (encaissement), `OUT` (décaissement) |
 | `customer_transaction_type` ✅ | `CREDIT_SALE`, `PAYMENT`, `ADJUSTMENT`, `SALE_CANCELLATION` |
 | `subscription_status` ✅ | `TRIALING`, `ACTIVE`, `PAST_DUE`, `CANCELLED`, `EXPIRED` |
+| `platform_role` ✅ | `SUPER_ADMIN`, `OPERATIONS`, `SUPPORT`, `FINANCE`, `ANALYST` |
+| `platform_admin_status` ✅ | `ACTIVE`, `SUSPENDED` |
+| `ticket_status` ✅ | `OPEN`, `IN_PROGRESS`, `WAITING`, `RESOLVED`, `CLOSED` |
+| `ticket_priority` ✅ | `LOW`, `NORMAL`, `HIGH`, `URGENT` |
+| `announcement_audience` ✅ | `ALL`, `PLAN`, `BUSINESS`, `ROLE` |
+| `announcement_status` ✅ | `DRAFT`, `SENT` |
 
 `TRANSFER` est scindé en `TRANSFER_OUT` / `TRANSFER_IN` : un transfert = deux mouvements
 liés par `transfer_id`, chacun avec une quantité signée cohérente.
@@ -400,6 +408,30 @@ seulement avec `products.read_cost` (sinon `null`), dates = jours locaux de l'en
 Définitions : CA = Σ `total_amount` des ventes `COMPLETED` ; marge estimée = Σ (`line_total`
 − `quantity × unit_cost` figé) − remises globales ; trésorerie = paiements `IN` − `OUT` − dépenses.
 Les montants de `get_top_products` sont par ligne (avant remise globale).
+
+### 4.x Plateforme / back-office (Phase 16) ✅
+
+**platform_admins** (Global) — équipe JËND PRO : `user_id` (PK), `role platform_role`,
+`status platform_admin_status`, `created_by`. Indépendant de `business_members` : un membre
+du staff n'a **aucun** droit dans les entreprises, et un OWNER n'a aucun droit plateforme.
+Lecture : sa propre ligne, ou toutes avec `admins.manage`. Écriture : RPC uniquement.
+Invariant : au moins un `SUPER_ADMIN` actif (trigger).
+
+**platform_permissions / platform_role_permissions** (Global, migrations uniquement) —
+catalogue et matrice du back-office ([roles-and-permissions.md §6](roles-and-permissions.md#6-back-office-plateforme-phase-16)).
+
+**support_tickets** — `number` (séquence globale), `business_id` (nullable), `created_by`,
+`subject`, `status ticket_status`, `priority ticket_priority`, `assigned_to` (staff avec
+`support.manage`), `last_message_at`, `resolved_at`, `closed_at`. Lecture : le demandeur, ou
+le staff `support.read`. Écriture : RPC uniquement.
+
+**support_messages** — append-only : `ticket_id`, `author_id`, `is_staff`, `is_internal`
+(note interne, invisible du demandeur), `body`.
+
+**platform_announcements** — `title`, `body`, `audience`, `audience_value` (code plan,
+id entreprise, code rôle), `status` (`DRAFT` → `SENT`), `recipients_count`, `sent_by`,
+`sent_at`. Aucun accès API direct ; l'envoi crée des `notifications` `SYSTEM`
+(`data.kind = 'ANNOUNCEMENT'`) pour les membres actifs d'entreprises actives de l'audience.
 
 ## 5. Index — principes
 

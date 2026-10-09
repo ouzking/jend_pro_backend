@@ -286,6 +286,31 @@ traduit pour l'utilisateur) ; `detail` apporte un complément non contractuel.
 | `22023` | `CLIENT_REFERENCE_REQUIRED`, `INVALID_PAYMENT`, `PAYMENT_EXCEEDS_TOTAL` | Vente invalide |
 | `P0001` | `PLAN_LIMIT_REACHED` (`detail` JSON) | Limite du plan atteinte |
 | `P0001` | `PRODUCT_ARCHIVED`, `CUSTOMER_REQUIRED_FOR_CREDIT`, `SALE_ALREADY_CANCELLED` | Règle de vente |
+| `P0001` | `LAST_SUPER_ADMIN`, `CANNOT_CHANGE_SELF`, `INVALID_ASSIGNEE`, `TICKET_CLOSED`, `ANNOUNCEMENT_NOT_EDITABLE`, `RATE_LIMITED` | Règle back-office / support |
+| `P0002` | `BUSINESS_NOT_FOUND`, `TICKET_NOT_FOUND`, `ADMIN_NOT_FOUND`, `PLAN_NOT_FOUND` | Ressource introuvable (back-office) |
+| `22023` | `INVALID_SORT`, `INVALID_DATE_RANGE`, `DATE_RANGE_TOO_LARGE`, `INVALID_GRANULARITY`, `REFERENCE_REQUIRED`, `AUDIENCE_VALUE_REQUIRED` | Paramètre invalide (back-office) |
 | `23514` / `23505` | (PostgreSQL) | Contrainte `CHECK` / unicité violée |
 
 PostgREST renvoie `42501` en HTTP 401 (anonyme) ou 403 (connecté), les autres en 400/404/409.
+
+## 14. Indicateurs plateforme (back-office)
+
+Calculés par `admin_get_overview` / `admin_get_timeseries` (jours de Dakar, 366 jours max).
+Le back-office **n'affiche que ces définitions** ; aucun indicateur n'est recalculé côté client.
+
+| Indicateur | Définition |
+|---|---|
+| MRR | Σ prix **catalogue** mensuel des abonnements payés courants (`ACTIVE`/`PAST_DUE` avec `external_reference`, en bonne situation). Plan annuel : prix / 12. Les plans « sur devis » (prix 0, ex. `ENTERPRISE`) comptent 0. |
+| ARR | MRR × 12 |
+| Entreprises payantes · ARPU | Entreprises ayant un tel abonnement · MRR / entreprises payantes |
+| Encaissé | Σ `billing_events.amount` traités sur la période (webhook + paiements manuels) |
+| Churn | Abonnements **payés** (`external_reference` non nul) terminés (`ended_at`) sur la période |
+| Essais expirés | Abonnements sans paiement terminés sur la période |
+| Entreprises actives | Entreprises avec ≥ 1 vente `COMPLETED` sur la période |
+| Activation | Nouvelles entreprises de la période ayant réalisé ≥ 1 vente |
+| Volume d'affaires (GMV) | Σ `total_amount` des ventes `COMPLETED` des entreprises en XOF |
+| Utilisateurs connectés | Utilisateurs dont la **dernière** connexion tombe dans la période (approximation : pas d'historique de sessions en V1) |
+
+Paiements d'abonnement : seuls les paiements **confirmés** existent (`billing_events`). Il n'y a
+pas d'état « en attente », « échoué » ou « remboursé » en V1 ; ils seront ajoutés avec les
+adaptateurs Wave / Orange Money si le besoin est confirmé.

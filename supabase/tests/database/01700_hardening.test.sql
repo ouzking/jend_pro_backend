@@ -54,19 +54,31 @@ select is_empty($$
 select set_eq($$
   select p.proname::text from pg_proc p
    where p.pronamespace = 'public'::regnamespace and p.prosecdef
-     and pg_get_functiondef(p.oid) not like '%require_permission%' $$,
+     and pg_get_functiondef(p.oid) not like '%require_permission%'
+     and pg_get_functiondef(p.oid) not like '%require_platform_permission%' $$,
   array[
     -- self-scoped (auth.uid()) or membership-checked (is_member), reviewed:
     'accept_invitation', 'create_business', 'decline_invitation', 'get_my_permissions',
     'get_subscription_status', 'leave_business', 'list_business_members', 'list_my_invitations',
+    'get_my_platform_access', 'create_support_ticket', 'reply_support_ticket',
     -- service_role only:
     'platform_activate_subscription'],
-  'SECURITY DEFINER RPCs without require_permission are exactly the reviewed self-scoped / platform ones');
+  'SECURITY DEFINER RPCs without require_permission / require_platform_permission are exactly the reviewed self-scoped / platform ones');
 
 select set_eq($$
   select p.proname::text from pg_proc p
    where p.pronamespace = 'public'::regnamespace and has_function_privilege('authenticated', p.oid, 'EXECUTE') $$,
   array['accept_invitation', 'adjust_customer_balance', 'adjust_stock', 'cancel_purchase', 'cancel_sale',
+        -- Phase 16: back-office (each checks require_platform_permission) and support.
+        'admin_count_announcement_recipients', 'admin_delete_announcement', 'admin_get_audit_log',
+        'admin_get_business', 'admin_get_overview', 'admin_get_support_ticket', 'admin_get_timeseries',
+        'admin_get_user', 'admin_grant_platform_role', 'admin_list_admins', 'admin_list_announcements',
+        'admin_list_billing_events', 'admin_list_business_members', 'admin_list_businesses',
+        'admin_list_subscriptions', 'admin_list_support_tickets', 'admin_list_users',
+        'admin_record_manual_payment', 'admin_reply_support_ticket', 'admin_save_announcement',
+        'admin_send_announcement', 'admin_set_admin_status', 'admin_set_business_status',
+        'admin_update_support_ticket', 'create_support_ticket', 'get_my_platform_access',
+        'reply_support_ticket',
         'change_member_role', 'count_stock', 'create_business', 'create_sale', 'decline_invitation',
         'get_audit_log', 'get_dashboard_summary', 'get_my_permissions', 'get_sales_timeseries',
         'get_subscription_status', 'get_top_products', 'invite_member', 'leave_business',
@@ -85,7 +97,8 @@ select is_empty($$
    where n.nspname = 'private' and p.prosecdef
      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
      and p.proname not in ('system_role_id', 'member_business_ids', 'businesses_with_permission', 'is_member',
-                           'has_permission', 'require_permission', 'storage_business_id') $$,
+                           'has_permission', 'require_permission', 'storage_business_id',
+                           'has_platform_permission') $$,
   'only the read-only RLS helpers of the private schema are executable by users');
 
 -- -----------------------------------------------------------------------------
