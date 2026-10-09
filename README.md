@@ -72,9 +72,10 @@ alphabétique :
   idempotente, tâche quotidienne) · `01600` analytics (chiffres calculés à la main) ·
   `01700` **garde-fous d'architecture** (surface API et tables modifiables figées, conventions) ·
 `01800` back-office (RBAC plateforme, lectures inter-entreprises, suspension, paiement manuel,
-analytics, audit, gestion du staff) · `01900` support et annonces.
+analytics, audit, gestion du staff) · `01900` support et annonces · `02000` double
+authentification du staff.
 
-**Total : 658 tests pgTAP + 20 tests Deno**, exécutés en CI à chaque push
+**Total : 674 tests pgTAP + 20 tests Deno**, exécutés en CI à chaque push
 (`.github/workflows/ci.yml`).
 
 Chaque fichier de test s'exécute dans une transaction annulée (`rollback`) : aucun effet
@@ -138,7 +139,8 @@ Les tables sont livrées **avec** leur RLS et leurs tests dans la même phase.
 | 13 | Audit complet et immuable, rôle de l'acteur, journal paginé | ✅ Terminée |
 | 14 | Edge Functions (`invite-member`, `billing-webhook`), activation idempotente des abonnements, tâche quotidienne `pg_cron` | ✅ Terminée |
 | 15 | Analytics (tableau de bord), garde-fous d'architecture, revue des index, seed de démo, CI | ✅ Terminée |
-| 16 | Back-office plateforme : RBAC staff, RPC `admin_*`, support (tickets), annonces, paiements manuels, indicateurs SaaS | ✅ Terminée (local, non déployée) |
+| 16 | Back-office plateforme : RBAC staff, RPC `admin_*`, support (tickets), annonces, paiements manuels, indicateurs SaaS | ✅ Terminée |
+| 17 | Double authentification du staff (TOTP, aal2 exigé en base) | ✅ Terminée |
 
 ## Configuration manuelle Supabase (Dashboard)
 

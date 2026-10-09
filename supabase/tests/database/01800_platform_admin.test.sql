@@ -40,26 +40,26 @@ select tests.authenticate_as_anon();
 select throws_ok($$ select * from public.admin_list_businesses() $$, '42501', null, 'anon cannot call admin RPCs');
 select tests.clear_authentication();
 
-select tests.login('super@jendpro.test');
+select tests.login_mfa('super@jendpro.test');
 select is((select role::text from public.get_my_platform_access()), 'SUPER_ADMIN', 'staff read their own platform role');
 select ok((select 'admins.manage' = any (permissions) from public.get_my_platform_access()),
   'a super admin holds admins.manage');
 select is((select count(*)::int from public.platform_permissions), 13, 'staff can read the platform permission catalog');
 
-select tests.login('support@jendpro.test');
+select tests.login_mfa('support@jendpro.test');
 select throws_ok($$ select public.admin_get_overview(current_date - 6, current_date) $$, '42501', 'PERMISSION_DENIED',
   'SUPPORT has no analytics access');
 select ok((select not ('admins.manage' = any (permissions)) from public.get_my_platform_access()),
   'SUPPORT cannot manage admins');
 
-select tests.login('analyst@jendpro.test');
+select tests.login_mfa('analyst@jendpro.test');
 select throws_ok($$ select * from public.admin_list_users() $$, '42501', 'PERMISSION_DENIED', 'ANALYST cannot list users');
 select tests.clear_authentication();
 
 -- =============================================================================
 -- Businesses
 -- =============================================================================
-select tests.login('analyst@jendpro.test');
+select tests.login_mfa('analyst@jendpro.test');
 select is((select count(*)::int from public.admin_list_businesses(p_search => 'Business ')), 2,
   'staff see businesses of every tenant');
 select is((select max(total_count)::int from public.admin_list_businesses(p_search => 'Business ', p_limit => 1)), 2,
@@ -84,11 +84,11 @@ select tests.clear_authentication();
 -- =============================================================================
 -- Suspension
 -- =============================================================================
-select tests.login('support@jendpro.test');
+select tests.login_mfa('support@jendpro.test');
 select throws_ok($$ select public.admin_set_business_status(pg_temp.k('a'), 'SUSPENDED', 'Fraude suspectée') $$,
   '42501', 'PERMISSION_DENIED', 'SUPPORT cannot suspend a business');
 
-select tests.login('ops@jendpro.test');
+select tests.login_mfa('ops@jendpro.test');
 select throws_ok($$ select public.admin_set_business_status(pg_temp.k('a'), 'SUSPENDED', ' ') $$,
   '22023', 'REASON_REQUIRED', 'a reason is required');
 select lives_ok($$ select public.admin_set_business_status(pg_temp.k('a'), 'SUSPENDED', 'Fraude suspectée') $$,
@@ -106,7 +106,7 @@ select is((select count(*)::int from public.businesses where id = pg_temp.k('a')
 select is((select count(*)::int from public.notifications where data ->> 'kind' = 'BUSINESS_STATUS'), 1,
   'the owner is notified of the suspension');
 
-select tests.login('ops@jendpro.test');
+select tests.login_mfa('ops@jendpro.test');
 select lives_ok($$ select public.admin_set_business_status(pg_temp.k('a'), 'ACTIVE', 'Vérification terminée') $$,
   'the business can be reactivated');
 select tests.login('owner_a@test.local');
@@ -116,7 +116,7 @@ select tests.clear_authentication();
 -- =============================================================================
 -- Users
 -- =============================================================================
-select tests.login('support@jendpro.test');
+select tests.login_mfa('support@jendpro.test');
 select is((select businesses_count from public.admin_list_users(p_search => 'multi@test')), 2,
   'users are listed with their number of businesses');
 select is(jsonb_array_length(public.admin_get_user(tests.get_user_id('multi@test.local')) -> 'memberships'), 2,
@@ -130,13 +130,13 @@ select tests.clear_authentication();
 -- =============================================================================
 -- Subscriptions and manual payments
 -- =============================================================================
-select tests.login('support@jendpro.test');
+select tests.login_mfa('support@jendpro.test');
 select is((select status::text from public.admin_list_subscriptions(p_search => 'Business A')), 'TRIALING',
   'staff list current subscriptions');
 select throws_ok($$ select public.admin_record_manual_payment(pg_temp.k('a'), 'PRO', 1, 10000, 'VIR-001') $$,
   '42501', 'PERMISSION_DENIED', 'SUPPORT cannot record a payment');
 
-select tests.login('finance@jendpro.test');
+select tests.login_mfa('finance@jendpro.test');
 select throws_ok($$ select public.admin_record_manual_payment(pg_temp.k('a'), 'PRO', 1, 10000, ' ') $$,
   '22023', 'REFERENCE_REQUIRED', 'a payment reference is required');
 select throws_ok($$ select public.admin_record_manual_payment(pg_temp.k('a'), 'PRO', 1, 5000, 'VIR-001') $$,
@@ -157,7 +157,7 @@ select is((select count(*)::int from public.audit_logs where action = 'billing.m
 -- =============================================================================
 -- Analytics
 -- =============================================================================
-select tests.login('analyst@jendpro.test');
+select tests.login_mfa('analyst@jendpro.test');
 select is((public.admin_get_overview(current_date - 6, current_date) -> 'revenue' ->> 'mrr')::bigint, 10000::bigint,
   'MRR counts current paid subscriptions at catalog price');
 select ok((public.admin_get_overview(current_date - 6, current_date) -> 'businesses' ->> 'new')::int >= 2,
@@ -173,7 +173,7 @@ select tests.clear_authentication();
 -- =============================================================================
 -- Platform audit
 -- =============================================================================
-select tests.login('finance@jendpro.test');
+select tests.login_mfa('finance@jendpro.test');
 select is((select count(distinct business_name)::int from public.admin_get_audit_log(p_limit => 200)
             where business_name in ('Business A', 'Business B')), 2, 'the platform journal spans every tenant');
 select tests.clear_authentication();
@@ -181,18 +181,18 @@ select tests.clear_authentication();
 -- =============================================================================
 -- Admin management
 -- =============================================================================
-select tests.login('ops@jendpro.test');
+select tests.login_mfa('ops@jendpro.test');
 select throws_ok($$ select * from public.admin_list_admins() $$, '42501', 'PERMISSION_DENIED',
   'only super admins manage platform staff');
 
-select tests.login('super@jendpro.test');
+select tests.login_mfa('super@jendpro.test');
 select throws_ok($$ select public.admin_grant_platform_role('super@jendpro.test', 'ANALYST') $$, 'P0001', 'CANNOT_CHANGE_SELF',
   'a super admin cannot change their own role');
 select lives_ok($$ select public.admin_grant_platform_role('OUTSIDER@test.local', 'SUPPORT') $$,
   'a super admin grants a platform role by e-mail');
 select lives_ok($$ select public.admin_set_admin_status(tests.get_user_id('support@jendpro.test'), 'SUSPENDED') $$,
   'a super admin suspends a staff member');
-select tests.login('support@jendpro.test');
+select tests.login_mfa('support@jendpro.test');
 select throws_ok($$ select * from public.admin_list_users() $$, '42501', 'PERMISSION_DENIED',
   'a suspended staff member loses every permission');
 select tests.clear_authentication();

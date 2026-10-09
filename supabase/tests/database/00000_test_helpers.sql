@@ -175,6 +175,29 @@ as $$
   select tests.authenticate_as(tests.get_user_id(p_email));
 $$;
 
+-- Same as login, with an aal2 session (second factor verified, as after a TOTP check).
+create or replace function tests.login_mfa(p_email text)
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', tests.get_user_id(p_email), 'role', 'authenticated', 'aal', 'aal2')::text, true);
+  execute 'set local role authenticated';
+end;
+$$;
+
+-- Marks a user as having a verified TOTP factor (fixture; the real flow goes through Auth).
+create or replace function tests.add_verified_totp(p_email text)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at, secret)
+  values (gen_random_uuid(), tests.get_user_id(p_email), 'test', 'totp', 'verified', now(), now(), 'JBSWY3DPEHPK3PXP');
+$$;
+
 grant execute on all functions in schema tests to anon, authenticated, service_role;
 
 begin;

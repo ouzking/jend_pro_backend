@@ -989,17 +989,20 @@ export type Database = {
           code: string;
           created_at: string;
           description: string;
+          requires_mfa: boolean;
         };
         ComputedFields: never;
         Insert: {
           code: string;
           created_at?: string;
           description: string;
+          requires_mfa?: boolean;
         };
         Update: {
           code?: string;
           created_at?: string;
           description?: string;
+          requires_mfa?: boolean;
         };
         Relationships: [];
       };
@@ -2318,6 +2321,9 @@ export type Database = {
       get_my_platform_access: {
         Args: Record<PropertyKey, never>;
         Returns: {
+          aal: string;
+          mfa_enrolled: boolean;
+          mfa_permissions: string[];
           permissions: string[];
           role: Database["public"]["Enums"]["platform_role"];
           status: Database["public"]["Enums"]["platform_admin_status"];

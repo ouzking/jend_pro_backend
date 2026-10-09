@@ -286,6 +286,7 @@ traduit pour l'utilisateur) ; `detail` apporte un complément non contractuel.
 | `22023` | `CLIENT_REFERENCE_REQUIRED`, `INVALID_PAYMENT`, `PAYMENT_EXCEEDS_TOTAL` | Vente invalide |
 | `P0001` | `PLAN_LIMIT_REACHED` (`detail` JSON) | Limite du plan atteinte |
 | `P0001` | `PRODUCT_ARCHIVED`, `CUSTOMER_REQUIRED_FOR_CREDIT`, `SALE_ALREADY_CANCELLED` | Règle de vente |
+| `42501` | `MFA_REQUIRED` | Action plateforme exigeant une session validée par un second facteur (TOTP) |
 | `P0001` | `LAST_SUPER_ADMIN`, `CANNOT_CHANGE_SELF`, `INVALID_ASSIGNEE`, `TICKET_CLOSED`, `ANNOUNCEMENT_NOT_EDITABLE`, `RATE_LIMITED` | Règle back-office / support |
 | `P0002` | `BUSINESS_NOT_FOUND`, `TICKET_NOT_FOUND`, `ADMIN_NOT_FOUND`, `PLAN_NOT_FOUND` | Ressource introuvable (back-office) |
 | `22023` | `INVALID_SORT`, `INVALID_DATE_RANGE`, `DATE_RANGE_TOO_LARGE`, `INVALID_GRANULARITY`, `REFERENCE_REQUIRED`, `AUDIENCE_VALUE_REQUIRED` | Paramètre invalide (back-office) |

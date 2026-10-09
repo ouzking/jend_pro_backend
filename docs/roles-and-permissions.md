@@ -228,3 +228,19 @@ sans aucun lien avec `business_members`.
 | `admin_save_announcement(id?, title, body, audience, value?)` / `admin_delete_announcement(id)` / `admin_send_announcement(id)` | `announcements.manage` | Brouillon, suppression de brouillon, envoi |
 | `admin_list_admins()` / `admin_grant_platform_role(email, role)` / `admin_set_admin_status(user_id, status)` | `admins.manage` | Équipe plateforme |
 | `create_support_ticket(subject, body, business_id?, priority?)` / `reply_support_ticket(id, body)` | utilisateur connecté (membre actif si `business_id`) | Côté commerçant (app) |
+
+### 6.1 Double authentification (Phase 17)
+
+Règle appliquée en base, dans `private.has_platform_permission` (donc par toutes les RPC
+`admin_*` **et** les policies du staff), à partir du niveau de session `aal` du JWT :
+
+1. Un membre du staff qui a activé un facteur TOTP vérifié doit avoir une session **aal2**
+   pour **toute** permission plateforme : un mot de passe volé ne donne plus rien.
+2. Les permissions marquées `platform_permissions.requires_mfa` exigent **toujours** aal2 :
+   `businesses.manage`, `billing.manage`, `admins.manage`, `announcements.manage`.
+
+Erreurs : `PERMISSION_DENIED` (le rôle n'a pas la permission) ≠ `MFA_REQUIRED` (le rôle l'a,
+mais la session doit être validée par un second facteur). `get_my_platform_access()` renvoie
+aussi `mfa_permissions`, `mfa_enrolled` et `aal` pour que l'interface guide l'utilisateur.
+TOTP : activé dans `config.toml` (local) ; activé par défaut sur les projets hébergés
+(Dashboard → Authentication → Multi-Factor).

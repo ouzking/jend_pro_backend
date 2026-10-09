@@ -44,11 +44,11 @@ select tests.clear_authentication();
 -- =============================================================================
 -- Tickets — staff side
 -- =============================================================================
-select tests.login('analyst@jendpro.test');
+select tests.login_mfa('analyst@jendpro.test');
 select throws_ok($$ select * from public.admin_list_support_tickets() $$, '42501', 'PERMISSION_DENIED',
   'ANALYST has no support access');
 
-select tests.login('support@jendpro.test');
+select tests.login_mfa('support@jendpro.test');
 select is((select count(*)::int from public.admin_list_support_tickets(p_search => 'Business A')), 1,
   'support staff list tickets of every tenant');
 select is((select requester_email from public.admin_list_support_tickets(p_search => 'Business A')), 'owner_a@test.local',
@@ -71,7 +71,7 @@ select is((select count(*)::int from public.support_messages where ticket_id = p
 select is((select count(*)::int from public.notifications where data ->> 'kind' = 'SUPPORT_REPLY'), 1,
   'the requester is notified of the reply');
 
-select tests.login('support@jendpro.test');
+select tests.login_mfa('support@jendpro.test');
 select lives_ok($$ select public.admin_update_support_ticket(pg_temp.k('t'), p_status => 'WAITING') $$, 'status change');
 select tests.login('owner_a@test.local');
 select lives_ok($$ select public.reply_support_ticket(pg_temp.k('t'), 'Toujours pas.') $$, 'the requester answers');
@@ -79,7 +79,7 @@ select tests.clear_authentication();
 select is((select status::text from public.support_tickets where id = pg_temp.k('t')), 'OPEN',
   'an answer to a WAITING ticket reopens it');
 
-select tests.login('support@jendpro.test');
+select tests.login_mfa('support@jendpro.test');
 select throws_ok($$ select public.admin_update_support_ticket(pg_temp.k('t'), p_assigned_to => tests.get_user_id('analyst@jendpro.test')) $$,
   'P0001', 'INVALID_ASSIGNEE', 'tickets can only be assigned to support-capable staff');
 select lives_ok($$ select public.admin_update_support_ticket(pg_temp.k('t'), p_assigned_to => tests.get_user_id('support@jendpro.test'), p_status => 'CLOSED') $$,
@@ -103,11 +103,11 @@ select tests.login('owner_a@test.local');
 select throws_ok($$ select count(*) from public.platform_announcements $$, '42501', null,
   'announcements are not readable through the API');
 
-select tests.login('support@jendpro.test');
+select tests.login_mfa('support@jendpro.test');
 select throws_ok($$ select public.admin_save_announcement(null, 'Maintenance', 'Ce soir', 'ALL') $$, '42501',
   'PERMISSION_DENIED', 'SUPPORT cannot write announcements');
 
-select tests.login('ops@jendpro.test');
+select tests.login_mfa('ops@jendpro.test');
 select throws_ok($$ select public.admin_save_announcement(null, 'Promo', 'Texte', 'PLAN', 'GOLD') $$, 'P0002',
   'PLAN_NOT_FOUND', 'the audience must exist');
 select throws_ok($$ select public.admin_save_announcement(null, 'Promo', 'Texte', 'BUSINESS', 'not-a-uuid') $$, 'P0002',

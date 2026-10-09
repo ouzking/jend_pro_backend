@@ -54,6 +54,7 @@ document_sequences (business × type)
 | ✅ 16 | `20261008110000_platform_jobs` | 14 | `billing_events` (idempotence), RPC `platform_activate_subscription` (service_role), `private.daily_maintenance` + `pg_cron` |
 | ✅ 17 | `20261008120000_analytics_hardening` | 15 | RPC `get_dashboard_summary`, `get_sales_timeseries`, `get_top_products` ; index `product_costs(business_id)`, `sale_item_costs(business_id, sale_item_id)` |
 | ✅ 18 | `20261009090000_platform_admin` | 16 | RBAC plateforme (`platform_admins`, `platform_permissions`, `platform_role_permissions`), helpers `has_platform_permission` / `require_platform_permission`, RPC `admin_*` (entreprises, utilisateurs, abonnements, paiements, audit, analytics, administrateurs), paiement manuel |
+| ✅ 20 | `20261010090000_platform_mfa` | 17 | `platform_permissions.requires_mfa`, aal2 exigé pour les actions sensibles et pour tout accès d'un staff enrôlé ; `get_my_platform_access` enrichi |
 | ✅ 19 | `20261009100000_support_announcements` | 16 | `support_tickets`, `support_messages` (append-only), `platform_announcements`, RPC `create_support_ticket`, `reply_support_ticket`, `admin_*` support et annonces |
 | — | *(futur)* | — | Bucket privé `invoices` (factures PDF générées par Edge Function) — non construit tant que le besoin n'est pas confirmé |
 

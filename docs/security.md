@@ -34,8 +34,8 @@ du membre du staff, **jamais** `service_role`. Les droits plateforme viennent de
 tête de chaque RPC `admin_*` ; aucune policy des tables des entreprises n'est élargie. Les
 actions sensibles (suspension, paiement manuel, gestion du staff, tickets, annonces) sont
 auditées (`business.status_change`, `billing.manual_payment`, `platform_admin.*`,
-`support.ticket_update`, `announcement.send`). Recommandé en production : MFA (TOTP) pour
-les comptes du staff (Dashboard → Auth).
+`support.ticket_update`, `announcement.send`). Double authentification (Phase 17) : aal2 obligatoire pour
+les actions sensibles et pour tout accès d'un membre enrôlé (voir roles-and-permissions.md §6.1).
 
 ## 3. RLS — règles de conception
 
